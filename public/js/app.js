@@ -1995,7 +1995,7 @@ function setupNavigation() {
    DASHBOARD FORM - N8N WEBHOOK INTEGRATION
    ======================================== */
 
-const N8N_WEBHOOK_URL = 'https://main-production-e9e3.up.railway.app/webhook/new-subscription';
+const N8N_WEBHOOK_URL = window.ENV?.N8N_WEBHOOK_URL || 'https://main-production-e9e3.up.railway.app/webhook/new-subscription';
 
 // Handle subscription form submission on dashboard
 const addSubForm = document.getElementById('newSubscriptionForm');
