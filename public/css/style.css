@@ -254,6 +254,19 @@ button {
     text-align: center;
 }
 
+.cta-section h2 {
+    font-size: 2rem;
+    margin-bottom: 15px;
+    color: white;
+}
+
+.cta-section p {
+    font-size: 1.2rem;
+    margin-bottom: 30px;
+    opacity: 1;
+    color: white;
+}
+
 .cta-content {
     display: flex;
     flex-direction: column;
