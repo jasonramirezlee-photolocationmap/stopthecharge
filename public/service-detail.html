@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Get step-by-step cancellation instructions for your subscription service.">
+    <meta name="theme-color" content="#4F46E5">
+    <title>Cancellation Guide - StopTheCharge</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-brand">
+                <a href="index.html" class="logo-link">💳 StopTheCharge</a>
+            </div>
+            <button class="navbar-toggle" id="navbarToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="navbar-menu" id="navbarMenu">
+                <li><a href="index.html" class="nav-link">Home</a></li>
+                <li><a href="directory.html" class="nav-link">Directory</a></li>
+                <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+                <li><a href="admin.html" class="nav-link">Admin</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Breadcrumb Navigation -->
+    <div class="breadcrumb">
+        <div class="container">
+            <a href="index.html" class="breadcrumb-link">Home</a>
+            <span class="breadcrumb-separator">/</span>
+            <a href="directory.html" class="breadcrumb-link">Directory</a>
+            <span class="breadcrumb-separator">/</span>
+            <span class="breadcrumb-current" id="serviceBreadcrumb">Service</span>
+        </div>
+    </div>
+
+    <!-- Service Header -->
+    <section class="service-header">
+        <div class="container">
+            <div class="service-header-content">
+                <div class="service-icon" id="serviceIcon">📺</div>
+                <div class="service-info">
+                    <h1 id="serviceName">Service Name</h1>
+                    <div class="service-meta">
+                        <span class="category-tag" id="serviceCategory">Streaming</span>
+                        <span class="difficulty-badge" id="difficultyBadge" data-difficulty="easy">Easy</span>
+                        <span class="estimate-time" id="estimateTime">⏱️ ~5 minutes</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <div class="service-detail-container">
+        <div class="container">
+            <div class="service-layout">
+                <!-- Left Column: Instructions -->
+                <div class="service-main">
+                    <!-- Steps Section -->
+                    <section class="service-section">
+                        <h2>How to Cancel</h2>
+                        <div class="steps-list" id="stepsList">
+                            <!-- Steps will be populated by JavaScript -->
+                        </div>
+                    </section>
+
+                    <!-- Important Notes -->
+                    <section class="service-section">
+                        <h2>Important Notes</h2>
+                        <div class="notes-box" id="importantNotes">
+                            <!-- Notes will be populated by JavaScript -->
+                        </div>
+                    </section>
+
+                    <!-- Reviews Section -->
+                    <section class="service-section">
+                        <h2>User Reviews</h2>
+                        <div class="reviews-container" id="reviewsContainer">
+                            <!-- Reviews will be populated by JavaScript -->
+                        </div>
+                        <button class="cta-button cta-secondary" id="reportBtn">Report Outdated Information</button>
+                    </section>
+                </div>
+
+                <!-- Right Column: Sidebar -->
+                <aside class="service-sidebar">
+                    <!-- Quick Info -->
+                    <div class="sidebar-card">
+                        <h3>Quick Info</h3>
+                        <div class="quick-info">
+                            <div class="info-item">
+                                <span class="info-label">Estimated Time</span>
+                                <span class="info-value" id="sidebarTime">5 minutes</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Difficulty</span>
+                                <span class="info-value" id="sidebarDifficulty">Easy</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="info-label">Cancellation Method</span>
+                                <span class="info-value" id="cancellationMethod">Online</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contact Info -->
+                    <div class="sidebar-card">
+                        <h3>Contact Information</h3>
+                        <div class="contact-info" id="contactInfo">
+                            <!-- Contact info will be populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Action Button -->
+                    <button class="cta-button cta-primary" id="addSubscriptionBtn" style="width: 100%;">
+                        Add to My Subscriptions
+                    </button>
+                </aside>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 StopTheCharge. All rights reserved. Take control of your subscriptions.</p>
+        </div>
+    </footer>
+
+    <!-- N8N Configuration -->
+    <script src="config/n8n-config.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        // Initialize service detail page
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeServiceDetail();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="StopTheCharge - Easily cancel subscriptions and memberships. Track recurring payments and save money.">
+    <meta name="keywords" content="cancel subscription, stop recurring charges, membership cancellation, save money">
+    <meta name="theme-color" content="#4F46E5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="StopTheCharge">
+    <title>StopTheCharge - Cancel Subscriptions & Memberships</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%234F46E5' width='192' height='192'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='100' fill='white' font-family='Arial'>💳</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%234F46E5' width='192' height='192'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='100' fill='white' font-family='Arial'>💳</text></svg>">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-brand">
+                <a href="index.html" class="logo-link">💳 StopTheCharge</a>
+            </div>
+            <button class="navbar-toggle" id="navbarToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="navbar-menu" id="navbarMenu">
+                <li><a href="index.html" class="nav-link active">Home</a></li>
+                <li><a href="directory.html" class="nav-link">Directory</a></li>
+                <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+                <li><a href="admin.html" class="nav-link">Admin</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <h1 class="logo">💳 StopTheCharge</h1>
+                <p class="tagline">Take control of your subscriptions</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h2 class="hero-title">Stop Paying for What You Don't Use</h2>
+                <p class="hero-subtitle">Discover how to cancel unwanted subscriptions in minutes and reclaim your money</p>
+                <button class="cta-button cta-primary" id="getStartedBtn">Get Started - It's Free</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <h2 class="section-title">Why Choose StopTheCharge?</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📚</div>
+                    <h3 class="feature-title">Browse Services</h3>
+                    <p class="feature-description">Directory of 500+ services with easy cancellation information</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📖</div>
+                    <h3 class="feature-title">Step-by-Step Guides</h3>
+                    <p class="feature-description">Detailed cancellation instructions for each service</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📋</div>
+                    <h3 class="feature-title">Track Subscriptions</h3>
+                    <p class="feature-description">Keep a comprehensive list of all your recurring payments</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔔</div>
+                    <h3 class="feature-title">Get Reminders</h3>
+                    <p class="feature-description">Never miss a renewal date with smart notifications</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💰</div>
+                    <h3 class="feature-title">See Your Savings</h3>
+                    <p class="feature-description">Track exactly how much money you've saved</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⭐</div>
+                    <h3 class="feature-title">Community Reviews</h3>
+                    <p class="feature-description">Read real user experiences and cancellation tips</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="container">
+            <div class="cta-content">
+                <h2 class="cta-title">Ready to Take Control?</h2>
+                <p class="cta-subtitle">Join thousands who've already saved money by managing their subscriptions</p>
+                <button class="cta-button cta-primary" id="createAccountBtn">Create Free Account</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Add Subscription Section -->
+    <section class="add-subscription">
+        <div class="container">
+            <h2>Track Your First Subscription</h2>
+            <form id="addSubscriptionForm" class="subscription-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="email" id="userEmail" placeholder="Your Email" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="serviceName" placeholder="Service Name (e.g., Netflix)" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="number" id="monthlyCost" step="0.01" placeholder="Monthly Cost ($)" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="date" id="renewalDate" required>
+                    </div>
+                </div>
+                <button type="submit" class="cta-button">Add Subscription</button>
+            </form>
+            <div id="formResult"></div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 StopTheCharge. All rights reserved. Take control of your subscriptions.</p>
+        </div>
+    </footer>
+
+    <!-- N8N Configuration -->
+    <script src="config/n8n-config.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
