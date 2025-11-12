@@ -7,7 +7,9 @@
     <meta name="theme-color" content="#4F46E5">
     <title>Cancellation Guide - StopTheCharge</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="css/style.css">
+    <!-- Preload stylesheet for better performance -->
+    <link rel="preload" href="css/style.css" as="style" onload="this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="css/style.css"></noscript>
 </head>
 <body>
     <!-- Navigation -->
@@ -16,7 +18,7 @@
             <div class="navbar-brand">
                 <a href="index.html" class="logo-link">💳 StopTheCharge</a>
             </div>
-            <button class="navbar-toggle" id="navbarToggle">
+            <button class="navbar-toggle" id="navbarToggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="navbarMenu">
                 <span></span>
                 <span></span>
                 <span></span>
@@ -71,6 +73,17 @@
                             <!-- Steps will be populated by JavaScript -->
                         </div>
                     </section>
+
+                    <!-- HowTo Schema: will be populated dynamically -->
+                    <script type="application/ld+json" id="howtoSchema">
+                    {
+                        "@context": "https://schema.org",
+                        "@type": "HowTo",
+                        "name": "Cancellation steps",
+                        "description": "Step-by-step guide to cancel this subscription",
+                        "step": []
+                    }
+                    </script>
 
                     <!-- Important Notes -->
                     <section class="service-section">

@@ -10,10 +10,25 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="StopTheCharge">
     <title>StopTheCharge - Cancel Subscriptions & Memberships</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%234F46E5' width='192' height='192'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='100' fill='white' font-family='Arial'>💳</text></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%234F46E5' width='192' height='192'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='100' fill='white' font-family='Arial'>💳</text></svg>">
-    <link rel="stylesheet" href="css/style.css">
+        <link rel="manifest" href="manifest.json">
+        <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%234F46E5' width='192' height='192'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='100' fill='white' font-family='Arial'>💳</text></svg>'>
+        <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%234F46E5' width='192' height='192'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='100' fill='white' font-family='Arial'>💳</text></svg>'>
+        <!-- Critical inline CSS for above-the-fold (hero) to improve LCP -->
+        <style>
+            /* Minimal critical styles for hero and header */
+            .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+            .header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:40px 0;text-align:center}
+            .logo{font-size:2.5rem;font-weight:700;margin:0}
+            .hero{padding:80px 0;text-align:center;background:linear-gradient(180deg,#fff 0%,#f9fafb 100%)}
+            .hero-title{font-size:3.5rem;color:#111827;max-width:600px;line-height:1.1;font-weight:700;margin:0}
+            .hero-subtitle{font-size:1.25rem;color:#6b7280;max-width:600px}
+            .hero-search{display:flex;gap:12px;justify-content:center;align-items:center;margin-top:20px}
+            .hero-search .search-input{padding:12px 16px;border-radius:8px;border:1px solid #e5e7eb;min-width:260px;font-size:1rem}
+            .hero-search .search-btn{padding:12px 18px;border-radius:8px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none}
+        </style>
+        <!-- Preload main stylesheet and apply asynchronously to avoid render-blocking -->
+        <link rel="preload" href="css/style.css" as="style" onload="this.rel='stylesheet'">
+        <noscript><link rel="stylesheet" href="css/style.css"></noscript>
 </head>
 <body>
     <!-- Navigation -->
@@ -22,7 +37,7 @@
             <div class="navbar-brand">
                 <a href="index.html" class="logo-link">💳 StopTheCharge</a>
             </div>
-            <button class="navbar-toggle" id="navbarToggle">
+            <button class="navbar-toggle" id="navbarToggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="navbarMenu">
                 <span></span>
                 <span></span>
                 <span></span>
@@ -49,10 +64,31 @@
     <!-- Hero Section -->
     <section class="hero">
         <div class="container">
-            <div class="hero-content">
-                <h2 class="hero-title">Stop Paying for What You Don't Use</h2>
-                <p class="hero-subtitle">Discover how to cancel unwanted subscriptions in minutes and reclaim your money</p>
-                <button class="cta-button cta-primary" id="getStartedBtn">Get Started - It's Free</button>
+            <h2>The 100% Private Subscription Tracker</h2>
+            <p>Track subscriptions, get smart reminders, and save money - without giving up your privacy. No bank connections. No data selling. Ever.</p>
+            <button class="cta-button" id="getStartedBtn">Start Tracking Free</button>
+        </div>
+    </section>
+
+    <!-- Privacy Badge Section -->
+    <section class="privacy-badge">
+        <div class="container">
+            <div class="badge-grid">
+                <div class="badge">
+                    <span class="badge-icon">🔒</span>
+                    <h3>100% Private</h3>
+                    <p>Manual entry only. We never touch your bank account.</p>
+                </div>
+                <div class="badge">
+                    <span class="badge-icon">🚫</span>
+                    <h3>No Data Selling</h3>
+                    <p>Your data stays yours. We don't sell or share anything.</p>
+                </div>
+                <div class="badge">
+                    <span class="badge-icon">⚡</span>
+                    <h3>Simple & Fast</h3>
+                    <p>Add a subscription in 10 seconds. No connecting accounts.</p>
+                </div>
             </div>
         </div>
     </section>
@@ -114,17 +150,21 @@
             <form id="addSubscriptionForm" class="subscription-form">
                 <div class="form-row">
                     <div class="form-group">
+                        <label for="userEmail" class="sr-only">Your Email</label>
                         <input type="email" id="userEmail" placeholder="Your Email" required>
                     </div>
                     <div class="form-group">
+                        <label for="serviceName" class="sr-only">Service Name</label>
                         <input type="text" id="serviceName" placeholder="Service Name (e.g., Netflix)" required>
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
+                        <label for="monthlyCost" class="sr-only">Monthly Cost</label>
                         <input type="number" id="monthlyCost" step="0.01" placeholder="Monthly Cost ($)" required>
                     </div>
                     <div class="form-group">
+                        <label for="renewalDate" class="sr-only">Renewal Date</label>
                         <input type="date" id="renewalDate" required>
                     </div>
                 </div>

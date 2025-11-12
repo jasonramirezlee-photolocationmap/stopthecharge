@@ -894,6 +894,36 @@ function setupEventListeners() {
         console.warn(`[${APP_NAME}] Create Account button not found`);
     }
 
+    // Hero search (inline on homepage) -> push search to directory
+    const heroSearchBtn = document.getElementById('heroSearchBtn');
+    const heroSearchInput = document.getElementById('heroSearchInput');
+    if (heroSearchBtn && heroSearchInput) {
+        heroSearchBtn.addEventListener('click', () => {
+            const q = heroSearchInput.value.trim();
+            if (q) {
+                sessionStorage.setItem('directorySearch', q);
+            }
+            window.location.href = 'directory.html';
+        });
+        heroSearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                heroSearchBtn.click();
+            }
+        });
+    }
+
+    // Navbar toggle: update aria-expanded
+    const navToggle = document.getElementById('navbarToggle');
+    const navMenu = document.getElementById('navbarMenu');
+    if (navToggle && navMenu) {
+        navToggle.addEventListener('click', () => {
+            const expanded = navToggle.getAttribute('aria-expanded') === 'true';
+            navToggle.setAttribute('aria-expanded', String(!expanded));
+            navMenu.classList.toggle('open');
+        });
+    }
+
     console.log(`[${APP_NAME}] ✅ Event listeners configured`);
 }
 
@@ -1333,6 +1363,15 @@ function initializeDirectory() {
             handleSearch(e);
         });
     }
+
+    // If a search was passed from the homepage hero, apply it
+    const initialSearch = sessionStorage.getItem('directorySearch');
+    if (initialSearch && searchInput) {
+        console.log(`[${APP_NAME}] Applying initial search from homepage: ${initialSearch}`);
+        searchInput.value = initialSearch;
+        handleSearch();
+        sessionStorage.removeItem('directorySearch');
+    }
     
     filterBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -1581,6 +1620,38 @@ function populateServiceDetail(service) {
                 <span>${note}</span>
             </div>
         `).join('');
+    }
+
+    // Populate HowTo JSON-LD schema for this service
+    try {
+        const howtoEl = document.getElementById('howtoSchema');
+        if (howtoEl) {
+            const steps = service.steps.map((s, idx) => ({
+                "@type": "HowToStep",
+                "url": `${window.location.href}#step-${idx+1}`,
+                "name": `Step ${idx+1}`,
+                "text": s
+            }));
+
+            const howto = {
+                "@context": "https://schema.org",
+                "@type": "HowTo",
+                "name": `${service.name} cancellation guide`,
+                "description": `Step-by-step instructions to cancel ${service.name}`,
+                "totalTime": `PT${Math.max(1, parseInt(service.estimatedTime))}M`,
+                "estimatedCost": {
+                    "@type": "MonetaryAmount",
+                    "currency": "USD",
+                    "value": service.cost || 0
+                },
+                "step": steps
+            };
+
+            howtoEl.textContent = JSON.stringify(howto, null, 2);
+            console.log(`[${APP_NAME}] HowTo schema injected for ${service.name}`);
+        }
+    } catch (schemaErr) {
+        console.error(`[${APP_NAME}] Failed to populate HowTo schema:`, schemaErr);
     }
     
     // Reviews
