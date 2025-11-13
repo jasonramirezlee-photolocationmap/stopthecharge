@@ -789,6 +789,25 @@ document.addEventListener('DOMContentLoaded', () => {
             // Rest of form handling here
         });
     }
+
+    // Dashboard subscription form with free tier limit
+    const dashboardForm = document.getElementById('newSubscriptionForm');
+    if (dashboardForm) {
+        dashboardForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Check subscription limit for free tier
+            const currentSubs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+            if (currentSubs.length >= FREE_TIER_LIMIT) {
+                showUpgradeModal();
+                return;
+            }
+            
+            // Continue with existing dashboard form handling
+            handleAddNewSubscription(e);
+        });
+    }
+    
     console.log(`[${APP_NAME}] Initializing application...`);
     
     // Log N8N config status
@@ -1821,10 +1840,7 @@ function initializeDashboard() {
         console.log(`[${APP_NAME}] Export data button clicked`);
         handleExportData();
     });
-    if (form) form.addEventListener('submit', (e) => {
-        console.log(`[${APP_NAME}] Add new subscription form submitted`);
-        handleAddNewSubscription(e);
-    });
+    // Form submit handler is now in DOMContentLoaded with free tier limit check
     
     console.log(`[${APP_NAME}] Dashboard initialized successfully`);
 }
