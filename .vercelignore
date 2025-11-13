@@ -1,0 +1,5 @@
+public/
+backend/
+scripts/
+node_modules/
+*.md

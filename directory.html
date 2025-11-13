@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Browse 500+ subscription services and get step-by-step cancellation guides.">
+    <meta name="keywords" content="subscription directory, cancel services, streaming, gym, software">
+    <meta name="theme-color" content="#4F46E5">
+    <title>Subscription Directory - StopTheCharge</title>
+    <link rel="manifest" href="manifest.json">
+    <!-- Preload stylesheet for better performance -->
+    <link rel="preload" href="css/style.css" as="style" onload="this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="css/style.css"></noscript>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-brand">
+                <a href="index.html" class="logo-link">💳 StopTheCharge</a>
+            </div>
+            <button class="navbar-toggle" id="navbarToggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="navbarMenu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="navbar-menu" id="navbarMenu">
+                <li><a href="index.html" class="nav-link">Home</a></li>
+                <li><a href="directory.html" class="nav-link active">Directory</a></li>
+                <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+                <li><a href="admin.html" class="nav-link">Admin</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <header class="header header-secondary">
+        <div class="container">
+            <h1>Subscription Directory</h1>
+            <p>Browse 500+ services and find cancellation guides</p>
+        </div>
+    </header>
+
+    <!-- Search & Filter -->
+    <section class="search-section">
+        <div class="container">
+            <div class="search-wrapper">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    class="search-bar" 
+                    placeholder="Search services (e.g., Netflix, Spotify)..."
+                    aria-label="Search subscriptions"
+                >
+                <button class="search-icon" id="searchBtn">🔍</button>
+            </div>
+            <div class="filters">
+                <button class="filter-btn active" data-filter="all">All Services</button>
+                <button class="filter-btn" data-filter="streaming">Streaming</button>
+                <button class="filter-btn" data-filter="fitness">Fitness</button>
+                <button class="filter-btn" data-filter="software">Software</button>
+                <button class="filter-btn" data-filter="gaming">Gaming</button>
+                <button class="filter-btn" data-filter="food">Food & Grocery</button>
+                <button class="filter-btn" data-filter="news">News</button>
+            </div>
+            <div class="results-info">
+                <p id="resultsCount">Showing 20 services</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Grid -->
+    <section class="directory-section">
+        <div class="container">
+            <div class="services-grid" id="servicesGrid">
+                <!-- Services will be populated by JavaScript -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Empty State -->
+    <section class="empty-state" id="emptyState" style="display: none;">
+        <div class="container">
+            <div class="empty-state-content">
+                <p class="empty-icon">🔍</p>
+                <h2>No services found</h2>
+                <p>Try adjusting your search or filter criteria</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 StopTheCharge. All rights reserved. Take control of your subscriptions.</p>
+        </div>
+    </footer>
+
+    <!-- N8N Configuration -->
+    <script src="config/n8n-config.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        // Initialize directory page
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeDirectory();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Payment successful - StopTheCharge">
+    <meta name="theme-color" content="#4F46E5">
+    <title>Payment Successful - StopTheCharge</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .success-container {
+            min-height: 70vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+        .success-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 60px 40px;
+            max-width: 600px;
+            text-align: center;
+        }
+        .success-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: scaleIn 0.5s ease-out;
+        }
+        @keyframes scaleIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .success-card h1 {
+            color: #10b981;
+            margin-bottom: 15px;
+        }
+        .success-card p {
+            color: #6b7280;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .success-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .confirmation-details {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 30px 0;
+            text-align: left;
+        }
+        .confirmation-details h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #374151;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            color: #6b7280;
+            font-weight: 500;
+        }
+        .detail-value {
+            color: #374151;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-brand">
+                <a href="index.html" class="logo-link">💳 StopTheCharge</a>
+            </div>
+            <button class="navbar-toggle" id="navbarToggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="navbarMenu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="navbar-menu" id="navbarMenu">
+                <li><a href="index.html" class="nav-link">Home</a></li>
+                <li><a href="directory.html" class="nav-link">Directory</a></li>
+                <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Success Container -->
+    <div class="success-container">
+        <div class="success-card">
+            <div class="success-icon">🎉</div>
+            <h1>Payment Successful!</h1>
+            <p id="successMessage">Thank you for your payment. Your account has been upgraded.</p>
+            
+            <div class="confirmation-details" id="confirmationDetails">
+                <h3>Order Details</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Status:</span>
+                    <span class="detail-value" style="color: #10b981;">✓ Completed</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Confirmation:</span>
+                    <span class="detail-value" id="sessionId">Loading...</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Date:</span>
+                    <span class="detail-value" id="orderDate">-</span>
+                </div>
+            </div>
+
+            <p style="font-size: 0.95rem; color: #6b7280; margin-bottom: 30px;">
+                A confirmation email has been sent to your inbox with your receipt.
+            </p>
+
+            <div class="success-actions">
+                <a href="dashboard.html" class="cta-button cta-primary">Go to Dashboard</a>
+                <a href="index.html" class="cta-button cta-secondary">Back to Home</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 StopTheCharge. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Get session ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('session_id');
+        
+        if (sessionId) {
+            document.getElementById('sessionId').textContent = sessionId.substring(0, 20) + '...';
+        } else {
+            document.getElementById('sessionId').textContent = 'N/A';
+        }
+        
+        // Set order date
+        const now = new Date();
+        document.getElementById('orderDate').textContent = now.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        // Navigation toggle
+        const navbarToggle = document.getElementById('navbarToggle');
+        const navbarMenu = document.getElementById('navbarMenu');
+        if (navbarToggle && navbarMenu) {
+            navbarToggle.addEventListener('click', () => {
+                navbarMenu.classList.toggle('active');
+                const expanded = navbarMenu.classList.contains('active');
+                navbarToggle.setAttribute('aria-expanded', expanded);
+            });
+        }
+    </script>
+</body>
+</html>
