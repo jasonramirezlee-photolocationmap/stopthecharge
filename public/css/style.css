@@ -1755,3 +1755,72 @@ button {
     color: #6b7280;
     font-size: 0.95rem;
 }
+
+/* ========================================
+   UPGRADE MODAL
+   ======================================== */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.modal-content {
+    background: white;
+    padding: 40px;
+    border-radius: 16px;
+    max-width: 500px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h2 {
+    color: #1f2937;
+    margin-bottom: 20px;
+}
+
+.modal-content ul {
+    text-align: left;
+    margin: 20px 0;
+    padding-left: 20px;
+}
+
+.modal-content li {
+    margin-bottom: 10px;
+    color: #4b5563;
+}
+
+.modal-content .price {
+    font-size: 1.5rem;
+    color: #667eea;
+    margin: 20px 0;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 25px;
+}
+
+.secondary-button {
+    background: #e5e7eb;
+    color: #4b5563;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.secondary-button:hover {
+    background: #d1d5db;
+}

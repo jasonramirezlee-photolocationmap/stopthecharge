@@ -17,6 +17,7 @@ const SERVICE_WORKER_PATH = 'service-worker.js'; // Relative path from /public
 const STORAGE_KEY = 'stopthecharge_subscriptions';
 const STORAGE_SAVINGS_KEY = 'stopthecharge_savings';
 const N8N_WEBHOOK_ENABLED = true; // Set to false to disable webhooks
+const FREE_TIER_LIMIT = 3; // Maximum subscriptions for free tier
 
 /* ========================================
    STATE MANAGEMENT
@@ -2175,6 +2176,13 @@ if (homePageForm) {
     homePageForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
+        // Check subscription limit
+        const currentSubs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+        if (currentSubs.length >= FREE_TIER_LIMIT) {
+            showUpgradeModal();
+            return;
+        }
+        
         const resultDiv = document.getElementById('formResult');
         const userEmail = document.getElementById('userEmail')?.value;
         const serviceName = document.getElementById('serviceName')?.value;
@@ -2256,4 +2264,44 @@ if (homePageForm) {
 // Load subscriptions on page load
 if (document.getElementById('subscriptionsList')) {
     displaySubscriptions();
+}
+
+/* ========================================
+   UPGRADE MODAL - FREE TIER LIMIT
+   ======================================== */
+function showUpgradeModal() {
+    const modal = document.createElement('div');
+    modal.id = 'upgradeModal';
+    modal.innerHTML = `
+        <div class="modal-overlay">
+            <div class="modal-content">
+                <h2>🚀 Upgrade to Pro</h2>
+                <p>You've reached the free tier limit of ${FREE_TIER_LIMIT} subscriptions.</p>
+                <p><strong>Upgrade to Pro to unlock:</strong></p>
+                <ul>
+                    <li>✅ Unlimited subscriptions</li>
+                    <li>✅ Smart renewal reminders (7 & 1 day)</li>
+                    <li>✅ Cancellation letter generator</li>
+                    <li>✅ Net worth tracker</li>
+                    <li>✅ Export your data</li>
+                </ul>
+                <p class="price"><strong>Just $4.99/month</strong></p>
+                <div class="modal-buttons">
+                    <button class="cta-button" onclick="upgradeToPro()">Upgrade Now</button>
+                    <button class="secondary-button" onclick="closeUpgradeModal()">Maybe Later</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function closeUpgradeModal() {
+    const modal = document.getElementById('upgradeModal');
+    if (modal) modal.remove();
+}
+
+function upgradeToPro() {
+    // TODO: Integrate Stripe payment
+    alert('Stripe payment integration coming soon! Email: hello@stopthecharge.com to upgrade early.');
 }
