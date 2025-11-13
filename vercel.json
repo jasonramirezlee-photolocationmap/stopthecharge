@@ -1,14 +1,1 @@
-{
-  "functions": {
-    "api/create-checkout.js": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/api/create-checkout",
-      "destination": "/api/create-checkout.js"
-    }
-  ]
-}
+{}

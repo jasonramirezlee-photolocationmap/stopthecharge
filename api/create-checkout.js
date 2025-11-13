@@ -1,6 +1,6 @@
-const stripe = require('stripe');
+const Stripe = require('stripe');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     
     console.log('[Stripe] API called with body:', req.body);
     
-    const stripeClient = stripe(stripeSecretKey);
+    const stripeClient = Stripe(stripeSecretKey);
     let { priceId, email, mode = 'subscription' } = req.body;
     
     // Map environment variable keys to actual Stripe price IDs
