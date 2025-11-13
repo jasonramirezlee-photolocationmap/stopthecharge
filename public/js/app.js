@@ -2196,7 +2196,7 @@ async function checkout(plan) {
     };
     
     console.log('[Stripe] Starting checkout for plan:', plan);
-    console.log('[Stripe] Using price ID:', priceIds[plan]);
+    console.log('[Stripe] Using price ID key:', priceIds[plan]);
     
     try {
         const requestBody = { 
@@ -2204,6 +2204,7 @@ async function checkout(plan) {
             email: localStorage.getItem('userEmail') || ''
         };
         console.log('[Stripe] Request body:', requestBody);
+        console.log('[Stripe] Fetching:', window.location.origin + '/api/create-checkout');
         
         const response = await fetch('/api/create-checkout', {
             method: 'POST',
@@ -2212,6 +2213,14 @@ async function checkout(plan) {
         });
         
         console.log('[Stripe] Response status:', response.status);
+        console.log('[Stripe] Response headers:', Object.fromEntries(response.headers.entries()));
+        
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('text/html')) {
+            const htmlText = await response.text();
+            console.error('[Stripe] Received HTML instead of JSON:', htmlText.substring(0, 500));
+            throw new Error('API endpoint not found (404). The serverless function may not be deployed correctly.');
+        }
         
         if (!response.ok) {
             const errorText = await response.text();
@@ -2220,7 +2229,7 @@ async function checkout(plan) {
             try {
                 errorData = JSON.parse(errorText);
             } catch (e) {
-                throw new Error(`Server error: ${response.status} - ${errorText}`);
+                throw new Error(`Server error: ${response.status} - ${errorText.substring(0, 200)}`);
             }
             throw new Error(errorData.error || 'Payment failed');
         }
@@ -2236,7 +2245,7 @@ async function checkout(plan) {
         }
     } catch (error) {
         console.error('[Stripe] Checkout error:', error);
-        alert(`Unable to process payment at this time. Please try again or email hello@stopthecharge.com for assistance.\n\nError: ${error.message}`);
+        alert(`Unable to process payment.\n\nError: ${error.message}\n\nPlease email hello@stopthecharge.com for assistance.`);
     }
 }
 
