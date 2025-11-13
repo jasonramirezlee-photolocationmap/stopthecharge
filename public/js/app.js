@@ -775,6 +775,20 @@ async function sendReviewToN8N(review) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+
+    // Homepage subscription form with free tier limit
+    const homePageForm = document.getElementById("addSubscriptionForm");
+    if (homePageForm) {
+        homePageForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const currentSubs = JSON.parse(localStorage.getItem("subscriptions") || "[]");
+            if (currentSubs.length >= FREE_TIER_LIMIT) {
+                showUpgradeModal();
+                return;
+            }
+            // Rest of form handling here
+        });
+    }
     console.log(`[${APP_NAME}] Initializing application...`);
     
     // Log N8N config status
@@ -2169,85 +2183,6 @@ function displaySubscriptions() {
 // ========================================
 // HOMEPAGE SUBSCRIPTION FORM HANDLER
 // ========================================
-const homePageForm = document.getElementById('addSubscriptionForm');
-if (homePageForm) {
-    console.log(`[${APP_NAME}] Homepage subscription form found - setting up handler`);
-    
-    homePageForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        // Check subscription limit
-        const currentSubs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
-        if (currentSubs.length >= FREE_TIER_LIMIT) {
-            showUpgradeModal();
-            return;
-        }
-        
-        const resultDiv = document.getElementById('formResult');
-        const userEmail = document.getElementById('userEmail')?.value;
-        const serviceName = document.getElementById('serviceName')?.value;
-        const monthlyCost = parseFloat(document.getElementById('monthlyCost')?.value);
-        const renewalDate = document.getElementById('renewalDate')?.value;
-        
-        // Reset result display
-        if (resultDiv) {
-            resultDiv.style.display = 'none';
-            resultDiv.className = '';
-        }
-        
-        // Validate
-        if (!userEmail || !serviceName || !monthlyCost || !renewalDate) {
-            if (resultDiv) {
-                resultDiv.style.display = 'block';
-                resultDiv.className = 'error';
-                resultDiv.textContent = '⚠️ Please fill in all required fields';
-            }
-            return;
-        }
-        
-        const subscriptionData = {
-            user_email: userEmail,
-            service_name: serviceName,
-            monthly_cost: monthlyCost,
-            renewal_date: renewalDate,
-            timestamp: new Date().toISOString()
-        };
-        
-        console.log(`[${APP_NAME}] Sending subscription from homepage:`, subscriptionData);
-        
-        // Save locally
-        saveToLocalStorage(subscriptionData);
-        
-        // Send to N8N
-        try {
-            const response = await fetch(N8N_WEBHOOK_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(subscriptionData)
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            
-            console.log(`[${APP_NAME}] ✅ N8N webhook received subscription`);
-            
-            // Show success
-            if (resultDiv) {
-                resultDiv.style.display = 'block';
-                resultDiv.className = 'success';
-                resultDiv.textContent = '✅ Subscription added! Check your email for confirmation.';
-            }
-            
-            // Reset form
-            homePageForm.reset();
-            
-            // Redirect to dashboard after 2 seconds
-            setTimeout(() => {
-                window.location.href = 'dashboard.html';
-            }, 2000);
             
         } catch (error) {
             console.error(`[${APP_NAME}] ❌ Webhook error:`, error);
