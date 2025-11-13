@@ -1,4 +1,25 @@
 {
-  "buildCommand": "node scripts/inject-env.js",
-  "outputDirectory": "public"
+  "builds": [
+    {
+      "src": "scripts/inject-env.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/public/$1"
+    }
+  ]
 }

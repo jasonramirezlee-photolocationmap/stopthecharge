@@ -4,16 +4,16 @@ export default async function handler(req, res) {
     }
     
     const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-    const { priceId, email } = req.body;
+    const { priceId, email, mode = 'subscription' } = req.body;
     
     try {
         const session = await stripe.checkout.sessions.create({
-            mode: 'subscription',
+            mode: mode, // 'subscription' for Pro plans, 'payment' for one-time purchases
             payment_method_types: ['card'],
             line_items: [{ price: priceId, quantity: 1 }],
             customer_email: email,
-            success_url: `${req.headers.origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${req.headers.origin}/`,
+            success_url: `${req.headers.origin}/success.html?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${req.headers.origin}/dashboard.html`,
             metadata: { source: 'stopthecharge_web' }
         });
         
@@ -23,3 +23,4 @@ export default async function handler(req, res) {
         res.status(500).json({ error: error.message });
     }
 }
+

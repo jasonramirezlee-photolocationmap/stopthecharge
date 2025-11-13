@@ -1821,11 +1821,13 @@ function initializeDashboard() {
     const addBtn = document.getElementById('addSubBtn');
     const cancelBtn = document.getElementById('cancelSubBtn');
     const exportBtn = document.getElementById('exportBtn');
+    const generateLetterBtn = document.getElementById('generateLetterBtn');
     const form = document.getElementById('newSubscriptionForm');
     
     console.log(`[${APP_NAME}] Add button found: ${!!addBtn}`);
     console.log(`[${APP_NAME}] Cancel button found: ${!!cancelBtn}`);
     console.log(`[${APP_NAME}] Export button found: ${!!exportBtn}`);
+    console.log(`[${APP_NAME}] Generate letter button found: ${!!generateLetterBtn}`);
     console.log(`[${APP_NAME}] Form found: ${!!form}`);
     
     if (addBtn) addBtn.addEventListener('click', () => {
@@ -1839,6 +1841,10 @@ function initializeDashboard() {
     if (exportBtn) exportBtn.addEventListener('click', () => {
         console.log(`[${APP_NAME}] Export data button clicked`);
         handleExportData();
+    });
+    if (generateLetterBtn) generateLetterBtn.addEventListener('click', () => {
+        console.log(`[${APP_NAME}] Generate cancellation letter button clicked`);
+        showCancellationLetterModal();
     });
     // Form submit handler is now in DOMContentLoaded with free tier limit check
     
@@ -2100,44 +2106,6 @@ function setupNavigation() {
     }
 }
 
-/* ========================================
-   DASHBOARD FORM - N8N WEBHOOK INTEGRATION
-   ======================================== */
-
-const N8N_WEBHOOK_URL = window.ENV?.N8N_WEBHOOK_URL || 'https://main-production-e9e3.up.railway.app/webhook/new-subscription';
-
-// Handle subscription form submission on dashboard
-            const response = await fetch(N8N_WEBHOOK_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(subscriptionData)
-            });
-            
-            console.log(`[${APP_NAME}] N8N Response:`, response);
-            
-            resultDiv.style.display = 'block';
-            resultDiv.style.background = '#d4edda';
-            resultDiv.style.color = '#155724';
-            resultDiv.textContent = '✅ Subscription added! You will receive reminder emails.';
-            
-            // Reset form
-            addSubForm.reset();
-            
-            // Refresh subscription list
-            displaySubscriptions();
-            
-        } catch (error) {
-            console.error(`[${APP_NAME}] Error:`, error);
-            resultDiv.style.display = 'block';
-            resultDiv.style.background = '#f8d7da';
-            resultDiv.style.color = '#721c24';
-            resultDiv.textContent = '⚠️ Subscription saved locally. Email reminders may not work.';
-        }
-    });
-}
-
 // Save to localStorage
 function saveToLocalStorage(data) {
     let subscriptions = JSON.parse(localStorage.getItem('subscriptions') || '[]');
@@ -2200,11 +2168,12 @@ function showUpgradeModal() {
                     <p><strong>Both plans include:</strong></p>
                     <ul>
                         <li>✅ Unlimited subscriptions</li>
-                        <li>✅ Smart renewal reminders</li>
-                        <li>✅ Cancellation letter generator</li>
+                        <li>✅ Smart renewal reminders (7 & 1 day before)</li>
                         <li>✅ Net worth tracker</li>
                         <li>✅ Export your data</li>
+                        <li>✅ Priority support</li>
                     </ul>
+                    <p style="margin-top: 15px; font-size: 0.9rem; color: #6b7280;">💡 Cancellation letter generator available as separate add-on for $2.99/letter</p>
                 </div>
                 
                 <button class="secondary-button" onclick="closeUpgradeModal()">Maybe Later</button>
@@ -2226,7 +2195,7 @@ async function checkout(plan) {
     };
     
     try {
-        const response = await fetch('https://stopthecharge.vercel.app/api/create-checkout', {
+        const response = await fetch('/api/create-checkout', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -2235,11 +2204,84 @@ async function checkout(plan) {
             })
         });
         
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Payment failed');
+        }
+        
         const { url } = await response.json();
-        window.location.href = url;
+        if (url) {
+            window.location.href = url;
+        } else {
+            throw new Error('No checkout URL received');
+        }
     } catch (error) {
         console.error('Checkout error:', error);
-        alert('Payment processing is being set up. Email hello@stopthecharge.com to upgrade now!');
+        alert(`Unable to process payment at this time. Please try again or email hello@stopthecharge.com for assistance.\n\nError: ${error.message}`);
+    }
+}
+
+// Show cancellation letter modal
+function showCancellationLetterModal() {
+    const modalHTML = `
+        <div class="modal-overlay" id="cancellationLetterModal">
+            <div class="modal-content" style="max-width: 500px;">
+                <button class="modal-close" onclick="document.getElementById('cancellationLetterModal').remove()">&times;</button>
+                <h2 style="margin-bottom: 15px;">Generate Cancellation Letter</h2>
+                <p style="color: #6b7280; margin-bottom: 20px;">Get a professionally formatted cancellation letter for any subscription. Perfect for services that require written cancellation notice.</p>
+                
+                <div class="features-list" style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <p style="font-weight: 600; margin-bottom: 10px;">Includes:</p>
+                    <ul style="margin: 0; padding-left: 20px;">
+                        <li>✅ Legally formatted cancellation request</li>
+                        <li>✅ Your account details pre-filled</li>
+                        <li>✅ Ready to print or email PDF</li>
+                        <li>✅ Immediate download</li>
+                    </ul>
+                </div>
+                
+                <div style="text-align: center;">
+                    <button class="cta-button cta-primary" onclick="checkoutCancellationLetter()" style="font-size: 1.1rem; padding: 15px 40px;">
+                        Generate Letter - $2.99
+                    </button>
+                    <p style="font-size: 0.85rem; color: #9ca3af; margin-top: 10px;">One-time payment • Instant delivery</p>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+// Checkout for cancellation letter (one-time payment)
+async function checkoutCancellationLetter() {
+    const priceId = 'price_CANCELLATION_LETTER'; // TODO: Create this Stripe price
+    
+    try {
+        const response = await fetch('/api/create-checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                priceId: priceId,
+                mode: 'payment', // one-time payment instead of subscription
+                email: localStorage.getItem('userEmail') || ''
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Payment failed');
+        }
+        
+        const { url } = await response.json();
+        if (url) {
+            window.location.href = url;
+        } else {
+            throw new Error('No checkout URL received');
+        }
+    } catch (error) {
+        console.error('Cancellation letter checkout error:', error);
+        alert(`Unable to process payment at this time. Please try again or email hello@stopthecharge.com for assistance.\n\nError: ${error.message}`);
     }
 }
 /* Cache bust: 1763010662 */
+
