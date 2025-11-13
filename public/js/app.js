@@ -1933,6 +1933,13 @@ function toggleAddForm() {
 function handleAddNewSubscription(e) {
     e.preventDefault();
     
+    // Check subscription limit for free tier
+    const currentSubs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+    if (currentSubs.length >= FREE_TIER_LIMIT) {
+        showUpgradeModal();
+        return;
+    }
+    
     const name = document.getElementById('subName').value;
     const cost = parseFloat(document.getElementById('subCost').value);
     const renewalDate = document.getElementById('subRenewal').value;
@@ -2178,22 +2185,6 @@ function displaySubscriptions() {
             </div>
         `).join('');
     }
-}
-
-// ========================================
-// HOMEPAGE SUBSCRIPTION FORM HANDLER
-// ========================================
-            
-        } catch (error) {
-            console.error(`[${APP_NAME}] ❌ Webhook error:`, error);
-            
-            if (resultDiv) {
-                resultDiv.style.display = 'block';
-                resultDiv.className = 'error';
-                resultDiv.textContent = '⚠️ Subscription saved locally. Check your dashboard to track it.';
-            }
-        }
-    });
 }
 
 // Load subscriptions on page load
