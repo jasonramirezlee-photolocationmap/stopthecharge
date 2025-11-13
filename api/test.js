@@ -1,4 +1,4 @@
-module.exports = async function handler(req, res) {
+module.exports = (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.status(200).json({ 
         message: 'API is working!',
