@@ -1,7 +1,7 @@
 {
   "name": "stopthecharge",
   "version": "1.0.0",
-  "description": "",
+  "description": "Subscription management platform",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -11,5 +11,8 @@
   "license": "ISC",
   "dependencies": {
     "stripe": "^19.3.1"
+  },
+  "engines": {
+    "node": ">=18.x"
   }
 }
