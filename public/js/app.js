@@ -2173,7 +2173,7 @@ function showUpgradeModal() {
                         <li>✅ Export your data</li>
                         <li>✅ Priority support</li>
                     </ul>
-                    <p style="margin-top: 15px; font-size: 0.9rem; color: #6b7280;">💡 Cancellation letter generator available as separate add-on for $2.99/letter</p>
+                    <p style="margin-top: 15px; font-size: 0.9rem; color: #6b7280;">💡 Cancellation letter generator available as separate add-on for $12/letter</p>
                 </div>
                 
                 <button class="secondary-button" onclick="closeUpgradeModal()">Maybe Later</button>
@@ -2194,29 +2194,47 @@ async function checkout(plan) {
         yearly: 'price_1SSoYvAL9TCLgFxz2v3KAJJb'
     };
     
+    console.log('[Stripe] Starting checkout for plan:', plan);
+    console.log('[Stripe] Using price ID:', priceIds[plan]);
+    
     try {
+        const requestBody = { 
+            priceId: priceIds[plan],
+            email: localStorage.getItem('userEmail') || ''
+        };
+        console.log('[Stripe] Request body:', requestBody);
+        
         const response = await fetch('/api/create-checkout', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                priceId: priceIds[plan],
-                email: localStorage.getItem('userEmail') || ''
-            })
+            body: JSON.stringify(requestBody)
         });
         
+        console.log('[Stripe] Response status:', response.status);
+        
         if (!response.ok) {
-            const errorData = await response.json();
+            const errorText = await response.text();
+            console.error('[Stripe] Error response:', errorText);
+            let errorData;
+            try {
+                errorData = JSON.parse(errorText);
+            } catch (e) {
+                throw new Error(`Server error: ${response.status} - ${errorText}`);
+            }
             throw new Error(errorData.error || 'Payment failed');
         }
         
-        const { url } = await response.json();
-        if (url) {
-            window.location.href = url;
+        const data = await response.json();
+        console.log('[Stripe] Success response:', data);
+        
+        if (data.url) {
+            console.log('[Stripe] Redirecting to:', data.url);
+            window.location.href = data.url;
         } else {
-            throw new Error('No checkout URL received');
+            throw new Error('No checkout URL received from server');
         }
     } catch (error) {
-        console.error('Checkout error:', error);
+        console.error('[Stripe] Checkout error:', error);
         alert(`Unable to process payment at this time. Please try again or email hello@stopthecharge.com for assistance.\n\nError: ${error.message}`);
     }
 }
@@ -2242,7 +2260,7 @@ function showCancellationLetterModal() {
                 
                 <div style="text-align: center;">
                     <button class="cta-button cta-primary" onclick="checkoutCancellationLetter()" style="font-size: 1.1rem; padding: 15px 40px;">
-                        Generate Letter - $2.99
+                        Generate Letter - $12
                     </button>
                     <p style="font-size: 0.85rem; color: #9ca3af; margin-top: 10px;">One-time payment • Instant delivery</p>
                 </div>
