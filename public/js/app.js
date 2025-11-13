@@ -2107,47 +2107,6 @@ function setupNavigation() {
 const N8N_WEBHOOK_URL = window.ENV?.N8N_WEBHOOK_URL || 'https://main-production-e9e3.up.railway.app/webhook/new-subscription';
 
 // Handle subscription form submission on dashboard
-const addSubForm = document.getElementById('newSubscriptionForm');
-if (addSubForm) {
-    addSubForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const resultDiv = document.getElementById('formResult');
-        if (!resultDiv) {
-            console.warn(`[${APP_NAME}] Form result div not found`);
-            return;
-        }
-        
-        resultDiv.style.display = 'none';
-        
-        const userEmail = document.getElementById('userEmail')?.value;
-        const serviceName = document.getElementById('subName')?.value;
-        const monthlyCost = parseFloat(document.getElementById('subCost')?.value);
-        const renewalDate = document.getElementById('subRenewal')?.value;
-        
-        if (!userEmail || !serviceName || !monthlyCost || !renewalDate) {
-            resultDiv.style.display = 'block';
-            resultDiv.style.background = '#f8d7da';
-            resultDiv.style.color = '#721c24';
-            resultDiv.textContent = '⚠️ Please fill in all required fields';
-            return;
-        }
-        
-        const subscriptionData = {
-            user_email: userEmail,
-            service_name: serviceName,
-            monthly_cost: monthlyCost,
-            renewal_date: renewalDate,
-            timestamp: new Date().toISOString()
-        };
-        
-        console.log(`[${APP_NAME}] Sending to N8N:`, subscriptionData);
-        
-        // Save locally first
-        saveToLocalStorage(subscriptionData);
-        
-        // Send to N8N
-        try {
             const response = await fetch(N8N_WEBHOOK_URL, {
                 method: 'POST',
                 headers: {
