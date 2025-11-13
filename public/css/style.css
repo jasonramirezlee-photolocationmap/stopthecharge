@@ -421,10 +421,12 @@ button {
 
     .cta-title {color: white;
         font-size: 1.75rem;
+                color: white;
     }
 
     .cta-subtitle {color: white;
-        font-size: 0.95rem;
+        font-size: 1.75rem;
+                color: white;   
     }
 
     .cta-button {
