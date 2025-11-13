@@ -1,3 +1,5 @@
+const stripe = require('stripe');
+
 export default async function handler(req, res) {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
@@ -26,7 +28,7 @@ export default async function handler(req, res) {
     
     console.log('[Stripe] API called with body:', req.body);
     
-    const stripe = require('stripe')(stripeSecretKey);
+    const stripeClient = stripe(stripeSecretKey);
     const { priceId, email, mode = 'subscription' } = req.body;
     
     if (!priceId) {
@@ -39,21 +41,23 @@ export default async function handler(req, res) {
         console.log('[Stripe] Mode:', mode);
         console.log('[Stripe] Email:', email);
         
-        const session = await stripe.checkout.sessions.create({
+        const origin = req.headers.origin || req.headers.referer?.replace(/\/$/, '') || 'https://stopthecharge.vercel.app';
+        
+        const session = await stripeClient.checkout.sessions.create({
             mode: mode,
             payment_method_types: ['card'],
             line_items: [{ price: priceId, quantity: 1 }],
             customer_email: email || undefined,
-            success_url: `${req.headers.origin}/success.html?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${req.headers.origin}/dashboard.html`,
+            success_url: `${origin}/success.html?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${origin}/dashboard.html`,
             metadata: { source: 'stopthecharge_web' }
         });
         
         console.log('[Stripe] Session created successfully:', session.id);
-        res.status(200).json({ url: session.url });
+        return res.status(200).json({ url: session.url });
     } catch (error) {
         console.error('[Stripe] Error creating session:', error);
-        res.status(500).json({ 
+        return res.status(500).json({ 
             error: error.message,
             details: error.type || 'unknown_error'
         });
