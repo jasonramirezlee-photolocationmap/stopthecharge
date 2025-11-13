@@ -2189,9 +2189,10 @@ function closeUpgradeModal() {
 }
 
 async function checkout(plan) {
+    // Fetch price IDs from backend (which reads from env vars)
     const priceIds = {
-        monthly: 'price_1SSoY3AL9TCLgFxzKJSa5VdL',
-        yearly: 'price_1SSoYvAL9TCLgFxz2v3KAJJb'
+        monthly: 'STRIPE_PRICE_MONTHLY',
+        yearly: 'STRIPE_PRICE_YEARLY'
     };
     
     console.log('[Stripe] Starting checkout for plan:', plan);
@@ -2243,23 +2244,23 @@ async function checkout(plan) {
 function showCancellationLetterModal() {
     const modalHTML = `
         <div class="modal-overlay" id="cancellationLetterModal">
-            <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-content" style="max-width: 450px; padding: 30px;">
                 <button class="modal-close" onclick="document.getElementById('cancellationLetterModal').remove()">&times;</button>
-                <h2 style="margin-bottom: 15px;">Generate Cancellation Letter</h2>
-                <p style="color: #6b7280; margin-bottom: 20px;">Get a professionally formatted cancellation letter for any subscription. Perfect for services that require written cancellation notice.</p>
+                <h2 style="margin-bottom: 10px; font-size: 1.6rem;">Cancellation Letter</h2>
+                <p style="color: #6b7280; margin-bottom: 20px; font-size: 0.95rem;">Professional cancellation letter for any subscription</p>
                 
-                <div class="features-list" style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                    <p style="font-weight: 600; margin-bottom: 10px;">Includes:</p>
-                    <ul style="margin: 0; padding-left: 20px;">
-                        <li>✅ Legally formatted cancellation request</li>
-                        <li>✅ Your account details pre-filled</li>
-                        <li>✅ Ready to print or email PDF</li>
-                        <li>✅ Immediate download</li>
+                <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <p style="font-weight: 600; margin-bottom: 8px; font-size: 0.95rem;">Includes:</p>
+                    <ul style="margin: 0; padding-left: 20px; font-size: 0.9rem; line-height: 1.6;">
+                        <li>✅ Legally formatted request</li>
+                        <li>✅ Account details pre-filled</li>
+                        <li>✅ Print or email ready PDF</li>
+                        <li>✅ Instant download</li>
                     </ul>
                 </div>
                 
                 <div style="text-align: center;">
-                    <button class="cta-button cta-primary" onclick="checkoutCancellationLetter()" style="font-size: 1.1rem; padding: 15px 40px;">
+                    <button class="cta-button cta-primary" onclick="checkoutCancellationLetter()" style="font-size: 1.05rem; padding: 14px 35px; width: 100%;">
                         Generate Letter - $12
                     </button>
                     <p style="font-size: 0.85rem; color: #9ca3af; margin-top: 10px;">One-time payment • Instant delivery</p>
@@ -2272,7 +2273,7 @@ function showCancellationLetterModal() {
 
 // Checkout for cancellation letter (one-time payment)
 async function checkoutCancellationLetter() {
-    const priceId = 'price_CANCELLATION_LETTER'; // TODO: Create this Stripe price
+    const priceId = 'STRIPE_PRICE_CANCEL_LETTER';
     
     try {
         const response = await fetch('/api/create-checkout', {

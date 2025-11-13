@@ -29,10 +29,22 @@ export default async function handler(req, res) {
     console.log('[Stripe] API called with body:', req.body);
     
     const stripeClient = stripe(stripeSecretKey);
-    const { priceId, email, mode = 'subscription' } = req.body;
+    let { priceId, email, mode = 'subscription' } = req.body;
+    
+    // Map environment variable keys to actual Stripe price IDs
+    const priceIdMap = {
+        'STRIPE_PRICE_MONTHLY': process.env.STRIPE_PRICE_MONTHLY,
+        'STRIPE_PRICE_YEARLY': process.env.STRIPE_PRICE_YEARLY,
+        'STRIPE_PRICE_CANCEL_LETTER': process.env.STRIPE_PRICE_CANCEL_LETTER
+    };
+    
+    // If priceId is an env var key, replace it with the actual value
+    if (priceIdMap[priceId]) {
+        priceId = priceIdMap[priceId];
+    }
     
     if (!priceId) {
-        return res.status(400).json({ error: 'Price ID is required' });
+        return res.status(400).json({ error: 'Price ID is required or not configured' });
     }
     
     try {
