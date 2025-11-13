@@ -419,11 +419,11 @@ button {
         padding: 50px 0;
     }
 
-    .cta-title {
+    .cta-title {color: white;
         font-size: 1.75rem;
     }
 
-    .cta-subtitle {
+    .cta-subtitle {color: white;
         font-size: 0.95rem;
     }
 
