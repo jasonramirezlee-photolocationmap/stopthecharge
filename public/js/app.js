@@ -2275,21 +2275,38 @@ function showUpgradeModal() {
     modal.innerHTML = `
         <div class="modal-overlay">
             <div class="modal-content">
+                <button class="modal-close" onclick="closeUpgradeModal()">×</button>
                 <h2>🚀 Upgrade to Pro</h2>
                 <p>You've reached the free tier limit of ${FREE_TIER_LIMIT} subscriptions.</p>
-                <p><strong>Upgrade to Pro to unlock:</strong></p>
-                <ul>
-                    <li>✅ Unlimited subscriptions</li>
-                    <li>✅ Smart renewal reminders (7 & 1 day)</li>
-                    <li>✅ Cancellation letter generator</li>
-                    <li>✅ Net worth tracker</li>
-                    <li>✅ Export your data</li>
-                </ul>
-                <p class="price"><strong>Just $4.99/month</strong></p>
-                <div class="modal-buttons">
-                    <button class="cta-button" onclick="upgradeToPro()">Upgrade Now</button>
-                    <button class="secondary-button" onclick="closeUpgradeModal()">Maybe Later</button>
+                
+                <div class="pricing-options">
+                    <div class="pricing-card">
+                        <h3>Monthly</h3>
+                        <p class="price">$4.99<span>/month</span></p>
+                        <button class="cta-button" onclick="checkout('monthly')">Choose Monthly</button>
+                    </div>
+                    
+                    <div class="pricing-card recommended">
+                        <span class="badge">BEST VALUE</span>
+                        <h3>Yearly</h3>
+                        <p class="price">$49.99<span>/year</span></p>
+                        <p class="savings">Save $10/year</p>
+                        <button class="cta-button" onclick="checkout('yearly')">Choose Yearly</button>
+                    </div>
                 </div>
+                
+                <div class="features-list">
+                    <p><strong>Both plans include:</strong></p>
+                    <ul>
+                        <li>✅ Unlimited subscriptions</li>
+                        <li>✅ Smart renewal reminders</li>
+                        <li>✅ Cancellation letter generator</li>
+                        <li>✅ Net worth tracker</li>
+                        <li>✅ Export your data</li>
+                    </ul>
+                </div>
+                
+                <button class="secondary-button" onclick="closeUpgradeModal()">Maybe Later</button>
             </div>
         </div>
     `;
@@ -2301,7 +2318,26 @@ function closeUpgradeModal() {
     if (modal) modal.remove();
 }
 
-function upgradeToPro() {
-    // TODO: Integrate Stripe payment
-    alert('Stripe payment integration coming soon! Email: hello@stopthecharge.com to upgrade early.');
+async function checkout(plan) {
+    const priceIds = {
+        monthly: 'price_1SSoY3AL9TCLgFxzKJSa5VdL',
+        yearly: 'price_1SSoYvAL9TCLgFxz2v3KAJJb'
+    };
+    
+    try {
+        const response = await fetch('https://stopthecharge.vercel.app/api/create-checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                priceId: priceIds[plan],
+                email: localStorage.getItem('userEmail') || ''
+            })
+        });
+        
+        const { url } = await response.json();
+        window.location.href = url;
+    } catch (error) {
+        console.error('Checkout error:', error);
+        alert('Payment processing is being set up. Email hello@stopthecharge.com to upgrade now!');
+    }
 }
