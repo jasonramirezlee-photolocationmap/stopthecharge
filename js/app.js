@@ -804,7 +804,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             // Continue with existing dashboard form handling
-            handleAddNewSubscription(e);
+            function handleAddNewSubscription(e) {
+    e.preventDefault();
+    e.stopPropagation();
         });
     }
     
