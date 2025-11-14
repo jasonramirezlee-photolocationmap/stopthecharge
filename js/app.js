@@ -16,6 +16,19 @@ const APP_NAME = 'StopTheCharge';
 const SERVICE_WORKER_PATH = 'service-worker.js'; // Relative path from /public
 const STORAGE_KEY = 'stopthecharge_subscriptions';
 const STORAGE_SAVINGS_KEY = 'stopthecharge_savings';
+const PRO_STATUS_KEY = 'stopthecharge_pro_status';
+const PRO_METADATA_KEY = 'stopthecharge_pro_metadata';
+const LETTER_DATA_KEY = 'stopthecharge_pending_letter';
+const LETTER_UNLOCK_KEY = 'stopthecharge_letter_unlocked';
+const PRO_STATUS = {
+    FREE: 'free',
+    PRO: 'pro'
+};
+const PLAN_TYPES = {
+    MONTHLY: 'pro_monthly',
+    YEARLY: 'pro_yearly',
+    LETTER: 'cancellation_letter'
+};
 const N8N_WEBHOOK_ENABLED = true; // Set to false to disable webhooks
 const FREE_TIER_LIMIT = 3; // Maximum subscriptions for free tier
 
@@ -29,605 +42,23 @@ let appState = {
     services: [],
     subscriptions: []
 };
+let activeCategoryFilter = 'all';
+let spendingChart = null;
+let lastGeneratedLetter = null;
 
 /* ========================================
    MOCK DATA: SUBSCRIPTION SERVICES
    ======================================== */
-const SERVICES_DATA = [
-    {
-        id: 'netflix',
-        name: 'Netflix',
-        icon: '🎬',
-        category: 'streaming',
-        difficulty: 'easy',
-        cost: 15.99,
-        estimatedTime: '2 minutes',
-        cancellationMethod: 'Online',
-        steps: [
-            'Go to account settings',
-            'Select "Membership & Billing"',
-            'Click "Cancel membership"',
-            'Select reason (optional)',
-            'Click "Cancel" to confirm'
-        ],
-        notes: [
-            'You can reactivate anytime within 10 months',
-            'You\'ll have access until the end of your billing cycle',
-            'No refunds for partial months'
-        ],
-        reviews: [
-            { rating: 5, username: 'jsmith92', date: '2025-11-10', text: 'Super easy to cancel! Did it in under 2 minutes.' },
-            { rating: 5, username: 'movieFan', date: '2025-11-08', text: 'No hassle at all. Instructions were very clear.' }
-        ],
-        contact: { phone: '1-866-579-7172', email: 'help@netflix.com', chat: 'Available 24/7' }
-    },
-    {
-        id: 'hulu',
-        name: 'Hulu',
-        icon: '📺',
-        category: 'streaming',
-        difficulty: 'easy',
-        cost: 7.99,
-        estimatedTime: '3 minutes',
-        cancellationMethod: 'Online',
-        steps: [
-            'Log into your Hulu account',
-            'Go to "Account" > "Billing Info"',
-            'Click "Cancel Subscription"',
-            'Confirm cancellation'
-        ],
-        notes: [
-            'You\'ll still have access until the end of your billing cycle',
-            'Cancellations take effect immediately after your current billing period'
-        ],
-        reviews: [
-            { rating: 4, username: 'tvLover', date: '2025-11-05', text: 'Straightforward process. Took about 3 minutes.' }
-        ],
-        contact: { phone: '1-888-849-9421', email: 'support@hulu.com', chat: 'Available' }
-    },
-    {
-        id: 'disney-plus',
-        name: 'Disney+',
-        icon: '👑',
-        category: 'streaming',
-        difficulty: 'easy',
-        cost: 7.99,
-        estimatedTime: '2 minutes',
-        cancellationMethod: 'Online',
-        steps: [
-            'Sign in to your Disney+ account',
-            'Go to "Account" > "Subscription"',
-            'Click "Cancel Subscription"',
-            'Confirm your cancellation'
-        ],
-        notes: [
-            'Access continues until end of billing period',
-            'Bundle cancellations work differently'
-        ],
-        reviews: [
-            { rating: 5, username: 'disneyFan', date: '2025-11-01', text: 'Very easy process. No surprises!' }
-        ],
-        contact: { phone: '1-844-393-2326', email: 'help@disneyplus.com', chat: 'Yes' }
-    },
-    {
-        id: 'spotify',
-        name: 'Spotify',
-        icon: '🎵',
-        category: 'streaming',
-        difficulty: 'easy',
-        cost: 10.99,
-        estimatedTime: '1 minute',
-        cancellationMethod: 'Online',
-        steps: [
-            'Go to spotify.com/account',
-            'Click "Download your data" or scroll to Subscription',
-            'Click "Change plan" or "Upgrade/Downgrade"',
-            'Select "Spotify Free" to downgrade'
-        ],
-        notes: [
-            'Downgrading removes premium features but keeps your account',
-            'To fully delete, go to Privacy settings'
-        ],
-        reviews: [
-            { rating: 5, username: 'musicLover', date: '2025-10-28', text: 'Takes literally 30 seconds!' }
-        ],
-        contact: { phone: 'No phone support', email: 'support@spotify.com', chat: 'Yes' }
-    },
-    {
-        id: 'apple-music',
-        name: 'Apple Music',
-        icon: '🎶',
-        category: 'streaming',
-        difficulty: 'medium',
-        cost: 10.99,
-        estimatedTime: '5 minutes',
-        cancellationMethod: 'Online/iTunes',
-        steps: [
-            'Open Apple Music app on your device',
-            'Tap "Listen Now" tab',
-            'Tap your profile icon',
-            'Tap "Subscription"',
-            'Tap "Cancel Subscription"'
-        ],
-        notes: [
-            'Can also cancel through Apple ID settings',
-            'Family plans require family organizer approval'
-        ],
-        reviews: [
-            { rating: 4, username: 'appleUser', date: '2025-10-25', text: 'Not too hard but a bit buried in menus.' }
-        ],
-        contact: { phone: '1-800-MY-APPLE', email: 'support@apple.com', chat: 'Yes' }
-    },
-    {
-        id: 'planet-fitness',
-        name: 'Planet Fitness',
-        icon: '💪',
-        category: 'fitness',
-        difficulty: 'hard',
-        cost: 24.99,
-        estimatedTime: '15 minutes',
-        cancellationMethod: 'In-Person',
-        steps: [
-            'Call your local Planet Fitness gym',
-            'Speak to membership manager',
-            'Provide member ID and reason for cancellation',
-            'Confirm cancellation via phone or in person',
-            'Request cancellation letter in writing'
-        ],
-        notes: [
-            'No online cancellation available',
-            'Must call or visit in person',
-            'Early termination fees may apply',
-            'Some locations may try to retain you with offers'
-        ],
-        reviews: [
-            { rating: 1, username: 'frustrated_gym', date: '2025-10-20', text: 'Nightmare! They make it impossible to cancel.' },
-            { rating: 2, username: 'gymRat', date: '2025-10-15', text: 'Very difficult. Took 3 phone calls.' }
-        ],
-        contact: { phone: 'Your local gym', email: 'customer.service@planetfitness.com', chat: 'Limited' }
-    },
-    {
-        id: 'la-fitness',
-        name: 'LA Fitness',
-        icon: '🏋️',
-        category: 'fitness',
-        difficulty: 'hard',
-        cost: 29.99,
-        estimatedTime: '20 minutes',
-        cancellationMethod: 'In-Person/Mail',
-        steps: [
-            'Visit your LA Fitness location',
-            'Request membership cancellation form',
-            'Fill out and sign the form',
-            'Or mail certified letter to corporate office',
-            'Keep confirmation receipt'
-        ],
-        notes: [
-            'No online cancellation',
-            'Requires 30-day notice',
-            'Early termination fees may apply',
-            'Membership must be current to cancel'
-        ],
-        reviews: [
-            { rating: 1, username: 'cancelFail', date: '2025-10-10', text: 'Extremely difficult. Tried 5 times!' }
-        ],
-        contact: { phone: '1-800-54-LAFIT', email: 'memberservices@lafitness.com', chat: 'No' }
-    },
-    {
-        id: 'equinox',
-        name: 'Equinox',
-        icon: '🤸',
-        category: 'fitness',
-        difficulty: 'medium',
-        cost: 200.00,
-        estimatedTime: '10 minutes',
-        cancellationMethod: 'In-Person',
-        steps: [
-            'Call your Equinox club',
-            'Request membership cancellation',
-            'Provide member ID',
-            'Visit in person with valid ID to finalize',
-            'Receive cancellation confirmation'
-        ],
-        notes: [
-            'Membership freeze available as alternative',
-            'May offer retention offers',
-            '30-60 day cancellation notice required'
-        ],
-        reviews: [
-            { rating: 3, username: 'premiumMember', date: '2025-10-05', text: 'Process is okay but they keep trying to convince you not to cancel.' }
-        ],
-        contact: { phone: 'Your local club', email: 'membercare@equinox.com', chat: 'Yes' }
-    },
-    {
-        id: 'adobe',
-        name: 'Adobe Creative Cloud',
-        icon: '🎨',
-        category: 'software',
-        difficulty: 'easy',
-        cost: 54.99,
-        estimatedTime: '3 minutes',
-        cancellationMethod: 'Online',
-        steps: [
-            'Go to account.adobe.com',
-            'Sign in with your Adobe ID',
-            'Click "Plans & Subscriptions"',
-            'Click "Manage Plans"',
-            'Click "Cancel plan"',
-            'Follow the prompts'
-        ],
-        notes: [
-            'Annual plans may have early termination fees',
-            'Can downgrade instead of canceling',
-            'Creative Cloud files remain accessible'
-        ],
-        reviews: [
-            { rating: 5, username: 'designer', date: '2025-10-01', text: 'Super easy! No tricks.' }
-        ],
-        contact: { phone: '1-800-585-0774', email: 'support@adobe.com', chat: 'Yes' }
-    },
-    {
-        id: 'microsoft-365',
-        name: 'Microsoft 365',
-        icon: '📊',
-        category: 'software',
-        difficulty: 'easy',
-        cost: 9.99,
-        estimatedTime: '2 minutes',
-        cancellationMethod: 'Online',
-        steps: [
-            'Go to account.microsoft.com',
-            'Click "Your Services"',
-            'Find Microsoft 365',
-            'Click "Manage" or "Cancel subscription"',
-            'Confirm cancellation'
-        ],
-        notes: [
-            'You can still view files after cancellation',
-            'Consider downgrading to free version',
-            'Annual plans may have cancellation fees'
-        ],
-        reviews: [
-            { rating: 5, username: 'officeUser', date: '2025-09-28', text: 'Very straightforward!' }
-        ],
-        contact: { phone: '1-888-225-4786', email: 'support@microsoft.com', chat: 'Yes' }
-    },
-    {
-        id: 'dropbox',
-        name: 'Dropbox',
-        icon: '☁️',
-        category: 'software',
-        difficulty: 'easy',
-        cost: 9.99,
-        estimatedTime: '2 minutes',
-        cancellationMethod: 'Online',
-        steps: [
-            'Log in to dropbox.com',
-            'Click profile icon > Settings',
-            'Go to "Subscription" tab',
-            'Click "Downgrade to Basic"',
-            'Confirm'
-        ],
-        notes: [
-            'Downgrade is recommended over deletion',
-            'Keep 2GB free storage after downgrade'
-        ],
-        reviews: [
-            { rating: 5, username: 'cloudUser', date: '2025-09-25', text: 'One click!' }
-        ],
-        contact: { phone: 'No direct phone', email: 'support@dropbox.com', chat: 'Yes' }
-    },
-    {
-        id: 'ps-plus',
-        name: 'PlayStation Plus',
-        icon: '🎮',
-        category: 'gaming',
-        difficulty: 'easy',
-        cost: 9.99,
-        estimatedTime: '3 minutes',
-        cancellationMethod: 'Online',
-        steps: [
-            'Go to console Settings > Users & Accounts',
-            'Select your account > Account info > Subscription',
-            'Or visit account.playstation.com',
-            'Click "Manage Subscriptions"',
-            'Click "Cancel Auto-Renewal"'
-        ],
-        notes: [
-            'Service continues until end of billing period',
-            'Auto-renewal will turn back on after renewal',
-            'Can reactivate anytime'
-        ],
-        reviews: [
-            { rating: 5, username: 'gamer123', date: '2025-09-20', text: 'Super easy on console or web!' }
-        ],
-        contact: { phone: '1-800-345-7669', email: 'support@playstation.com', chat: 'Yes' }
-    },
-    {
-        id: 'xbox-gamepass',
-        name: 'Xbox Game Pass',
-        icon: '🎯',
-        category: 'gaming',
-        difficulty: 'easy',
-        cost: 17.99,
-        estimatedTime: '2 minutes',
-        cancellationMethod: 'Online',
-        steps: [
-            'Go to xbox.com',
-            'Sign in and go to Subscriptions',
-            'Find Xbox Game Pass',
-            'Click "Manage"',
-            'Click "Cancel subscription"'
-        ],
-        notes: [
-            'Promotions may lock you in for 12 months',
-            'Game Pass for PC and Console are separate'
-        ],
-        reviews: [
-            { rating: 5, username: 'xboxFan', date: '2025-09-15', text: 'Straightforward process!' }
-        ],
-        contact: { phone: '1-888-469-9696', email: 'support@xbox.com', chat: 'Yes' }
-    },
-    {
-        id: 'switch-online',
-        name: 'Nintendo Switch Online',
-        icon: '🎮',
-        category: 'gaming',
-        difficulty: 'easy',
-        cost: 4.99,
-        estimatedTime: '3 minutes',
-        cancellationMethod: 'Online',
-        steps: [
-            'Open Settings on your Switch',
-            'Go to User Settings > Subscriptions',
-            'Select "Software Subscriptions"',
-            'Click "Cancel Subscription"'
-        ],
-        notes: [
-            'Can switch between Individual and Family plans',
-            'No penalties for cancellation'
-        ],
-        reviews: [
-            { rating: 5, username: 'nintendoFan', date: '2025-09-10', text: 'Very easy!' }
-        ],
-        contact: { phone: '1-800-255-3700', email: 'support@nintendo.com', chat: 'Limited' }
-    },
-    {
-        id: 'amazon-prime',
-        name: 'Amazon Prime',
-        icon: '📦',
-        category: 'shopping',
-        difficulty: 'easy',
-        cost: 139.00,
-        estimatedTime: '2 minutes',
-        cancellationMethod: 'Online',
-        steps: [
-            'Go to amazon.com',
-            'Click Account & Lists > Your Account',
-            'Select "Prime Membership"',
-            'Click "End membership"',
-            'Click "Continue to Cancellation"'
-        ],
-        notes: [
-            'You keep benefits until end of membership period',
-            'Can resume Prime at any time',
-            'May have prorated refunds'
-        ],
-        reviews: [
-            { rating: 5, username: 'primeUser', date: '2025-09-05', text: 'Easy peasy!' }
-        ],
-        contact: { phone: '1-888-280-4331', email: 'support@amazon.com', chat: 'Yes' }
-    },
-    {
-        id: 'costco',
-        name: 'Costco Membership',
-        icon: '🛒',
-        category: 'shopping',
-        difficulty: 'medium',
-        cost: 60.00,
-        estimatedTime: '10 minutes',
-        cancellationMethod: 'In-Person/Phone',
-        steps: [
-            'Call 1-800-955-2292',
-            'Or visit your local Costco warehouse',
-            'Request membership cancellation',
-            'You may be offered a refund or downgrade',
-            'Provide member card'
-        ],
-        notes: [
-            'Refunds for unused membership available',
-            'Membership is tied to card in system',
-            'Can take 24-48 hours to process'
-        ],
-        reviews: [
-            { rating: 3, username: 'savingsHunter', date: '2025-09-01', text: 'Easy to cancel by phone, but they try to convince you to stay.' }
-        ],
-        contact: { phone: '1-800-955-2292', email: 'memberservices@costco.com', chat: 'No' }
-    },
-    {
-        id: 'sams-club',
-        name: "Sam's Club",
-        icon: '🏪',
-        category: 'shopping',
-        difficulty: 'medium',
-        cost: 50.00,
-        estimatedTime: '10 minutes',
-        cancellationMethod: 'In-Person/Phone',
-        steps: [
-            'Call 1-888-746-7726',
-            'Or visit your nearest Sam\'s Club',
-            'Ask to cancel membership',
-            'Provide member number',
-            'May be offered refund or options'
-        ],
-        notes: [
-            'Refund available for remaining months',
-            'Can cancel anytime',
-            'May take a few business days to process'
-        ],
-        reviews: [
-            { rating: 4, username: 'clubMember', date: '2025-08-28', text: 'Pretty straightforward. They did try to upsell me though.' }
-        ],
-        contact: { phone: '1-888-746-7726', email: 'memberservices@samsclub.com', chat: 'Limited' }
-    },
-    {
-        id: 'nyt',
-        name: 'New York Times',
-        icon: '📰',
-        category: 'news',
-        difficulty: 'easy',
-        cost: 17.00,
-        estimatedTime: '2 minutes',
-        cancellationMethod: 'Online',
-        steps: [
-            'Go to nytimes.com',
-            'Sign in to your account',
-            'Click Account > Manage',
-            'Find Subscription in left menu',
-            'Click "Cancel Digital Subscription"'
-        ],
-        notes: [
-            'No refunds for partial months',
-            'You can pause temporarily',
-            'Archives remain accessible after cancellation'
-        ],
-        reviews: [
-            { rating: 5, username: 'newsReader', date: '2025-08-25', text: 'Very easy online!' }
-        ],
-        contact: { phone: '1-888-698-9999', email: 'help@nytimes.com', chat: 'Yes' }
-    },
-    {
-        id: 'wsj',
-        name: 'Wall Street Journal',
-        icon: '📊',
-        category: 'news',
-        difficulty: 'medium',
-        cost: 38.00,
-        estimatedTime: '5 minutes',
-        cancellationMethod: 'Online/Phone',
-        steps: [
-            'Go to wsj.com',
-            'Sign in and go to My Account',
-            'Click "Subscriptions"',
-            'Click "Manage" next to your subscription',
-            'Follow prompts to cancel or call customer service'
-        ],
-        notes: [
-            'May offer retention discount',
-            'Bundle subscriptions require special handling',
-            'Archives and email newsletters may stop immediately'
-        ],
-        reviews: [
-            { rating: 3, username: 'businessReader', date: '2025-08-22', text: 'Takes a bit of clicking around but possible online.' }
-        ],
-        contact: { phone: '1-800-369-2834', email: 'support@wsj.com', chat: 'Yes' }
-    },
-    {
-        id: 'hellofresh',
-        name: 'HelloFresh',
-        icon: '🍽️',
-        category: 'food',
-        difficulty: 'easy',
-        cost: 55.00,
-        estimatedTime: '2 minutes',
-        cancellationMethod: 'Online',
-        steps: [
-            'Log into hellofresh.com',
-            'Go to Account Settings',
-            'Click "Subscriptions" or "Manage Subscription"',
-            'Select "Skip" or "Cancel Subscription"',
-            'Choose date for cancellation'
-        ],
-        notes: [
-            'Can skip weeks instead of canceling',
-            'Cancellation takes effect next delivery date',
-            'Paused subscriptions auto-resume'
-        ],
-        reviews: [
-            { rating: 5, username: 'foodie', date: '2025-08-20', text: 'Super easy! Love that you can skip weeks too.' }
-        ],
-        contact: { phone: '1-877-743-3878', email: 'support@hellofresh.com', chat: 'Yes' }
-    },
-    {
-        id: 'blue-apron',
-        name: 'Blue Apron',
-        icon: '🍳',
-        category: 'food',
-        difficulty: 'easy',
-        cost: 60.00,
-        estimatedTime: '2 minutes',
-        cancellationMethod: 'Online',
-        steps: [
-            'Sign into blueapron.com',
-            'Click Account > Subscription',
-            'Click "Manage Subscriptions"',
-            'Select "Cancel" or "Skip This Week"',
-            'Confirm cancellation'
-        ],
-        notes: [
-            'You can pause instead of cancel',
-            'Cancellation effective after next shipment',
-            'No cancellation fees'
-        ],
-        reviews: [
-            { rating: 5, username: 'homeChef', date: '2025-08-18', text: 'Very simple to cancel!' }
-        ],
-        contact: { phone: '1-844-278-2776', email: 'hello@blueapron.com', chat: 'Yes' }
-    },
-    {
-        id: 'peloton',
-        name: 'Peloton',
-        icon: '🚴',
-        category: 'fitness',
-        difficulty: 'medium',
-        cost: 44.00,
-        estimatedTime: '5 minutes',
-        cancellationMethod: 'Online/App',
-        steps: [
-            'Open Peloton app or go to peloton.com',
-            'Go to Account Settings',
-            'Select "Manage Subscription"',
-            'Click "Cancel Membership"',
-            'Follow cancellation prompts',
-            'Confirm cancellation'
-        ],
-        notes: [
-            'If within 30-day trial, you get full refund',
-            'After trial, no refunds for prepaid months',
-            'Can reactivate anytime'
-        ],
-        reviews: [
-            { rating: 4, username: 'fitnessFanatic', date: '2025-08-15', text: 'Easy enough but took a few clicks.' }
-        ],
-        contact: { phone: '1-866-679-9129', email: 'support@pelotoncycle.com', chat: 'Yes' }
-    },
-    {
-        id: 'classpass',
-        name: 'ClassPass',
-        icon: '🧘',
-        category: 'fitness',
-        difficulty: 'easy',
-        cost: 99.00,
-        estimatedTime: '2 minutes',
-        cancellationMethod: 'Online',
-        steps: [
-            'Log into classpass.com',
-            'Go to Account Settings',
-            'Click "Membership Settings"',
-            'Click "Cancel Membership"',
-            'Select reason and confirm'
-        ],
-        notes: [
-            'You can pause for up to 3 months',
-            'No refunds on unused credits',
-            'Can reactivate within 90 days'
-        ],
-        reviews: [
-            { rating: 5, username: 'fitnessJunkie', date: '2025-08-12', text: 'Easy online cancellation!' }
-        ],
-        contact: { phone: '1-866-598-1234', email: 'support@classpass.com', chat: 'Yes' }
+const SERVICES_DATA = (() => {
+    if (typeof window !== 'undefined' && window.SERVICES_DATA) {
+        return window.SERVICES_DATA;
     }
-];
+    if (typeof module !== 'undefined' && module.exports) {
+        return require('./services-data').SERVICES_DATA;
+    }
+    console.warn(`[${APP_NAME}] SERVICES_DATA not available; using empty list`);
+    return [];
+})();
 
 /* ========================================
    MOCK SAVED SUBSCRIPTIONS (Sample Data)
@@ -779,9 +210,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Homepage subscription form with free tier limit
     const homePageForm = document.getElementById("addSubscriptionForm");
     if (homePageForm) {
-        homePageForm.addEventListener("submit", async (e) => {
+        homePageForm.addEventListener("submit", (e) => {
             e.preventDefault();
-            const currentSubs = JSON.parse(localStorage.getItem("subscriptions") || "[]");
+            const currentSubs = getPersistedSubscriptions();
             if (currentSubs.length >= FREE_TIER_LIMIT) {
                 showUpgradeModal();
                 return;
@@ -793,22 +224,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Dashboard subscription form with free tier limit
     const dashboardForm = document.getElementById('newSubscriptionForm');
     if (dashboardForm) {
-        dashboardForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            // Check subscription limit for free tier
-            const currentSubs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
-            if (currentSubs.length >= FREE_TIER_LIMIT) {
-                showUpgradeModal();
-                return;
-            }
-            
-            // Continue with existing dashboard form handling
-            function handleAddNewSubscription(e) {
-    e.preventDefault();
-    e.stopPropagation();
-        });
+        dashboardForm.addEventListener('submit', handleAddNewSubscription);
     }
+    
+    document.querySelectorAll('[data-upgrade="true"]').forEach(btn => {
+        btn.addEventListener('click', (event) => {
+            event.preventDefault();
+            showUpgradeModal();
+        });
+    });
+    
+    syncProUI();
     
     console.log(`[${APP_NAME}] Initializing application...`);
     
@@ -1505,7 +931,7 @@ function handleFilterChange(e) {
 function viewServiceDetail(serviceId) {
     // Store service ID in sessionStorage for detail page
     sessionStorage.setItem('selectedServiceId', serviceId);
-    window.location.href = `/public/service-detail.html`;
+    window.location.href = `/service/${serviceId}.html`;
 }
 
 /* ========================================
@@ -1518,7 +944,8 @@ function initializeServiceDetail() {
     setupNavigation();
     
     // Get service ID from sessionStorage
-    const serviceId = sessionStorage.getItem('selectedServiceId') || 'netflix';
+    const pathMatch = window.location.pathname.match(/service\/([^/]+)\.html$/);
+    const serviceId = pathMatch ? pathMatch[1] : (sessionStorage.getItem('selectedServiceId') || 'netflix');
     const service = SERVICES_DATA.find(s => s.id === serviceId);
     
     console.log(`[${APP_NAME}] Looking for service ID: ${serviceId}`);
@@ -1529,6 +956,12 @@ function initializeServiceDetail() {
     }
     
     console.log(`[${APP_NAME}] ✅ Found service: ${service.name}`);
+    
+    document.title = `${service.name} Cancellation Guide - StopTheCharge`;
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+        metaDescription.setAttribute('content', `Learn how to cancel ${service.name} with simple, step-by-step instructions from StopTheCharge.`);
+    }
     
     // Populate service details
     populateServiceDetail(service);
@@ -1814,6 +1247,14 @@ function initializeDashboard() {
     appState.subscriptions = getSubscriptionsFromStorage();
     console.log(`[${APP_NAME}] Loaded ${appState.subscriptions.length} subscriptions from storage`);
     
+    const storedEmail = localStorage.getItem('userEmail');
+    if (storedEmail) {
+        const emailInput = document.getElementById('userEmail');
+        if (emailInput) {
+            emailInput.value = storedEmail;
+        }
+    }
+    
     // Render dashboard
     updateDashboardStats();
     renderSubscriptionsTable();
@@ -1849,6 +1290,9 @@ function initializeDashboard() {
         showCancellationLetterModal();
     });
     // Form submit handler is now in DOMContentLoaded with free tier limit check
+    setupSubscriptionFilters();
+    syncProUI();
+    setupSpendingChart();
     
     console.log(`[${APP_NAME}] Dashboard initialized successfully`);
 }
@@ -1871,6 +1315,12 @@ function updateDashboardStats() {
     if (savedThisMonthEl) savedThisMonthEl.textContent = `$${savings.thisMonth.toFixed(2)}`;
     if (totalSavedEl) totalSavedEl.textContent = `$${savings.allTime.toFixed(2)}`;
     
+    const potentialSavingsEl = document.getElementById('potentialSavings');
+    if (potentialSavingsEl) {
+        const annualSavings = totalMonthly * 12;
+        potentialSavingsEl.textContent = `$${annualSavings.toFixed(2)}`;
+    }
+    
     // Update chart metrics
     const chartThisMonth = document.getElementById('chartThisMonth');
     const chartLastMonth = document.getElementById('chartLastMonth');
@@ -1879,6 +1329,9 @@ function updateDashboardStats() {
     if (chartThisMonth) chartThisMonth.textContent = `$${savings.thisMonth.toFixed(0)}`;
     if (chartLastMonth) chartLastMonth.textContent = `$${(savings.allTime * 0.8).toFixed(0)}`;
     if (chartAverage) chartAverage.textContent = `$${(savings.allTime / 3).toFixed(0)}`;
+    
+    updateSpendingHistory(totalMonthly);
+    renderSpendingChart();
 }
 
 function renderSubscriptionsTable() {
@@ -1889,6 +1342,10 @@ function renderSubscriptionsTable() {
     if (!tbody) return;
     
     const subscriptions = appState.subscriptions;
+    const filtered = subscriptions.filter(sub => {
+        if (activeCategoryFilter === 'all') return true;
+        return sub.category === activeCategoryFilter;
+    });
     
     if (subscriptions.length === 0) {
         emptyMsg.style.display = 'block';
@@ -1897,7 +1354,15 @@ function renderSubscriptionsTable() {
     
     emptyMsg.style.display = 'none';
     
-    tbody.innerHTML = subscriptions.map(sub => `
+    if (filtered.length === 0) {
+        tbody.innerHTML = '';
+        emptyMsg.style.display = 'block';
+        emptyMsg.textContent = 'No subscriptions match this category yet.';
+        return;
+    }
+    
+    emptyMsg.textContent = '';
+    tbody.innerHTML = filtered.map(sub => `
         <tr>
             <td>${sub.serviceName}</td>
             <td><span class="category-tag">${sub.category}</span></td>
@@ -1908,6 +1373,26 @@ function renderSubscriptionsTable() {
             </td>
         </tr>
     `).join('');
+}
+
+function setupSubscriptionFilters() {
+    const filterContainer = document.getElementById('subscriptionCategoryFilters');
+    if (!filterContainer) return;
+    
+    filterContainer.querySelectorAll('button[data-category]').forEach(button => {
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            const category = button.dataset.category;
+            applySubscriptionFilter(category);
+            filterContainer.querySelectorAll('button[data-category]').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+        });
+    });
+}
+
+function applySubscriptionFilter(category) {
+    activeCategoryFilter = category || 'all';
+    renderSubscriptionsTable();
 }
 
 function renderUpcomingRenewals() {
@@ -1957,11 +1442,15 @@ function toggleAddForm() {
 function handleAddNewSubscription(e) {
     e.preventDefault();
     
-    // Check subscription limit for free tier
-    const currentSubs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
-    if (currentSubs.length >= FREE_TIER_LIMIT) {
+    const currentSubs = getPersistedSubscriptions();
+    if (!isProUser() && currentSubs.length >= FREE_TIER_LIMIT) {
         showUpgradeModal();
         return;
+    }
+    
+    const emailInput = document.getElementById('userEmail');
+    if (emailInput?.value) {
+        localStorage.setItem('userEmail', emailInput.value.trim());
     }
     
     const name = document.getElementById('subName').value;
@@ -2059,11 +1548,37 @@ function handleExportData() {
 }
 
 /* ========================================
-   UTILITY FUNCTIONS
-   ======================================== */
-function getSubscriptionsFromStorage() {
+    UTILITY FUNCTIONS
+    ======================================== */
+function getPersistedSubscriptions() {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : SAMPLE_SUBSCRIPTIONS;
+    if (stored) {
+        try {
+            return JSON.parse(stored);
+        } catch (error) {
+            console.warn(`[${APP_NAME}] Failed to parse subscriptions from ${STORAGE_KEY}:`, error);
+            return [];
+        }
+    }
+    
+    const legacy = localStorage.getItem('subscriptions');
+    if (legacy) {
+        try {
+            const parsed = JSON.parse(legacy);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+            localStorage.removeItem('subscriptions');
+            return parsed;
+        } catch (error) {
+            console.warn(`[${APP_NAME}] Failed to parse legacy subscriptions:`, error);
+        }
+    }
+    
+    return [];
+}
+
+function getSubscriptionsFromStorage() {
+    const stored = getPersistedSubscriptions();
+    return stored.length ? stored : SAMPLE_SUBSCRIPTIONS;
 }
 
 function saveSubscriptionsToStorage(subscriptions) {
@@ -2078,6 +1593,109 @@ function calculateSavings(subscriptions) {
         thisMonth: totalMonthly,
         allTime: allTime
     };
+}
+
+function getSpendingHistory() {
+    const stored = localStorage.getItem(STORAGE_SAVINGS_KEY);
+    if (stored) {
+        try {
+            return JSON.parse(stored);
+        } catch (error) {
+            console.warn(`[${APP_NAME}] Failed to parse savings history:`, error);
+        }
+    }
+    return generateDefaultSpendingHistory();
+}
+
+function generateDefaultSpendingHistory() {
+    const months = [];
+    const today = new Date();
+    for (let i = 5; i >= 0; i--) {
+        const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        months.push({
+            label: date.toLocaleString('en-US', { month: 'short' }),
+            month: date.getMonth(),
+            year: date.getFullYear(),
+            amount: Math.round((200 + Math.random() * 300) * 100) / 100
+        });
+    }
+    return months;
+}
+
+function updateSpendingHistory(totalMonthly) {
+    if (typeof totalMonthly !== 'number') return;
+    const history = getSpendingHistory();
+    const now = new Date();
+    const existing = history.find(entry => entry.month === now.getMonth() && entry.year === now.getFullYear());
+    
+    if (existing) {
+        existing.amount = Math.round(totalMonthly * 100) / 100;
+    } else {
+        history.push({
+            label: now.toLocaleString('en-US', { month: 'short' }),
+            month: now.getMonth(),
+            year: now.getFullYear(),
+            amount: Math.round(totalMonthly * 100) / 100
+        });
+    }
+    
+    while (history.length > 12) {
+        history.shift();
+    }
+    
+    localStorage.setItem(STORAGE_SAVINGS_KEY, JSON.stringify(history));
+}
+
+function renderSpendingChart() {
+    const chartElement = document.getElementById('spendingChart');
+    if (!chartElement || typeof Chart === 'undefined') {
+        return;
+    }
+    
+    const history = getSpendingHistory();
+    const labels = history.map(entry => entry.label);
+    const data = history.map(entry => entry.amount);
+    
+    if (spendingChart) {
+        spendingChart.data.labels = labels;
+        spendingChart.data.datasets[0].data = data;
+        spendingChart.update();
+        return;
+    }
+    
+    spendingChart = new Chart(chartElement, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Monthly Spending',
+                data,
+                borderColor: '#4f46e5',
+                backgroundColor: 'rgba(79,70,229,0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: (value) => `$${value}`
+                    }
+                }
+            }
+        }
+    });
+}
+
+function setupSpendingChart() {
+    renderSpendingChart();
 }
 
 function getCurrentDate() {
@@ -2108,17 +1726,363 @@ function setupNavigation() {
     }
 }
 
+function getProMetadata() {
+    try {
+        const stored = localStorage.getItem(PRO_METADATA_KEY);
+        return stored ? JSON.parse(stored) : {};
+    } catch (error) {
+        console.warn(`[${APP_NAME}] Failed to parse pro metadata`, error);
+        return {};
+    }
+}
+
+function isProUser() {
+    return localStorage.getItem(PRO_STATUS_KEY) === PRO_STATUS.PRO;
+}
+
+function setProStatus(isPro, metadata = {}) {
+    localStorage.setItem(PRO_STATUS_KEY, isPro ? PRO_STATUS.PRO : PRO_STATUS.FREE);
+    localStorage.setItem(PRO_METADATA_KEY, JSON.stringify(metadata));
+    syncProUI();
+}
+
+function syncProUI() {
+    const isPro = isProUser();
+    const body = document.body;
+    if (body) {
+        body.classList.toggle('pro-user', isPro);
+    }
+    
+    const upgradeBanner = document.getElementById('upgradeBanner');
+    if (upgradeBanner) {
+        upgradeBanner.style.display = isPro ? 'none' : 'flex';
+    }
+    
+    const proBadge = document.getElementById('proStatusLabel');
+    if (proBadge) {
+        proBadge.textContent = isPro
+            ? 'Pro plan · Unlimited subscriptions unlocked'
+            : `Free plan · Limit ${FREE_TIER_LIMIT} subscriptions`;
+    }
+    
+    const limitMessage = document.getElementById('freeLimitMessage');
+    if (limitMessage) {
+        limitMessage.style.display = isPro ? 'none' : 'flex';
+    }
+    
+    const addButton = document.getElementById('addSubBtn');
+    if (addButton) {
+        addButton.textContent = isPro ? '+ Add Subscription' : '+ Add Subscription (Free)';
+    }
+}
+
+function savePendingLetter(data) {
+    localStorage.setItem(LETTER_DATA_KEY, JSON.stringify(data));
+}
+
+function getPendingLetter() {
+    try {
+        const stored = localStorage.getItem(LETTER_DATA_KEY);
+        return stored ? JSON.parse(stored) : null;
+    } catch (error) {
+        console.warn(`[${APP_NAME}] Failed to parse pending letter`, error);
+        return null;
+    }
+}
+
+function clearPendingLetter() {
+    localStorage.removeItem(LETTER_DATA_KEY);
+}
+
+function markLetterUnlocked() {
+    localStorage.setItem(LETTER_UNLOCK_KEY, 'true');
+}
+
+function isLetterUnlocked() {
+    return localStorage.getItem(LETTER_UNLOCK_KEY) === 'true';
+}
+
+function resetLetterUnlock() {
+    localStorage.removeItem(LETTER_UNLOCK_KEY);
+}
+
+function renderLetterPreview(html) {
+    const preview = document.getElementById('letterPreview');
+    if (preview) {
+        preview.innerHTML = html;
+    }
+}
+
+function updateLetterActionsState(isUnlocked) {
+    const copyBtn = document.getElementById('copyLetterBtn');
+    const downloadBtn = document.getElementById('downloadLetterBtn');
+    const emailBtn = document.getElementById('emailLetterBtn');
+    const purchaseBtn = document.getElementById('purchaseLetterBtn');
+    const lockMessage = document.getElementById('letterLockMessage');
+    
+    [copyBtn, downloadBtn, emailBtn].forEach(btn => {
+        if (btn) {
+            btn.disabled = !isUnlocked;
+        }
+    });
+    
+    if (purchaseBtn) {
+        purchaseBtn.disabled = isUnlocked || !lastGeneratedLetter;
+        purchaseBtn.textContent = isUnlocked ? 'Letter Unlocked' : 'Unlock Letter - $12';
+        purchaseBtn.classList.toggle('cta-disabled', !lastGeneratedLetter);
+    }
+    
+    if (lockMessage) {
+        lockMessage.style.display = isUnlocked ? 'none' : 'flex';
+    }
+}
+
+function initializeCancellationLetterPage() {
+    setupNavigation();
+    const form = document.getElementById('letterForm');
+    const serviceSelect = document.getElementById('letterService');
+    
+    if (serviceSelect) {
+        populateLetterServiceOptions(serviceSelect);
+    }
+    
+    if (!form) return;
+    
+    form.addEventListener('submit', handleLetterFormSubmit);
+    
+    document.getElementById('copyLetterBtn')?.addEventListener('click', copyLetterToClipboard);
+    document.getElementById('downloadLetterBtn')?.addEventListener('click', downloadLetterAsPdf);
+    document.getElementById('emailLetterBtn')?.addEventListener('click', () => {
+        if (!lastGeneratedLetter) {
+            alert('Generate your letter first.');
+            return;
+        }
+        sendLetterToEmail(lastGeneratedLetter, true);
+    });
+    document.getElementById('purchaseLetterBtn')?.addEventListener('click', () => {
+        if (!lastGeneratedLetter) {
+            alert('Please generate your letter before purchasing.');
+            return;
+        }
+        checkoutCancellationLetter(lastGeneratedLetter);
+    });
+    
+    const storedLetter = getPendingLetter();
+    if (storedLetter?.previewHtml) {
+        lastGeneratedLetter = storedLetter;
+        renderLetterPreview(storedLetter.previewHtml);
+    }
+    
+    updateLetterActionsState(isLetterUnlocked());
+}
+
+function populateLetterServiceOptions(selectEl) {
+    const fragment = document.createDocumentFragment();
+    const sorted = [...SERVICES_DATA].sort((a, b) => a.name.localeCompare(b.name));
+    sorted.forEach(service => {
+        const option = document.createElement('option');
+        option.value = service.id;
+        option.textContent = `${service.name} (${service.category})`;
+        fragment.appendChild(option);
+    });
+    selectEl.appendChild(fragment);
+}
+
+function handleLetterFormSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const serviceId = formData.get('service');
+    const service = SERVICES_DATA.find(s => s.id === serviceId);
+    
+    const letterData = {
+        letterId: `letter_${Date.now()}`,
+        fullName: formData.get('fullName')?.trim(),
+        email: formData.get('email')?.trim(),
+        addressLine1: formData.get('addressLine1')?.trim(),
+        cityStateZip: formData.get('cityStateZip')?.trim(),
+        serviceId,
+        serviceName: service?.name || formData.get('customService') || 'Your Subscription',
+        accountNumber: formData.get('accountNumber')?.trim(),
+        membershipId: formData.get('membershipId')?.trim(),
+        reason: formData.get('reason')?.trim(),
+        createdAt: new Date().toISOString()
+    };
+    
+    letterData.previewHtml = buildLetterTemplate(letterData, service);
+    letterData.previewText = buildLetterText(letterData, service);
+    
+    lastGeneratedLetter = letterData;
+    savePendingLetter(letterData);
+    resetLetterUnlock();
+    renderLetterPreview(letterData.previewHtml);
+    updateLetterActionsState(false);
+}
+
+function buildLetterTemplate(letterData, service) {
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const addressBlock = [letterData.fullName, letterData.addressLine1, letterData.cityStateZip].filter(Boolean).join('<br>');
+    
+    return `
+        <div class="letter-document">
+            <p>${formattedDate}</p>
+            <p>${addressBlock}</p>
+            
+            <p>${letterData.serviceName} Cancellation Department<br>
+            ${service?.contact?.email || `support@${(service?.id || 'service').replace(/[^a-z0-9]/gi, '')}.com`}</p>
+            
+            <p><strong>RE: Cancellation Request for ${letterData.serviceName}</strong></p>
+            
+            <p>To whom it may concern,</p>
+            <p>I am writing to officially cancel my ${letterData.serviceName} subscription effective immediately. Please confirm that my account will not be billed moving forward.</p>
+            
+            <p><strong>Account details:</strong></p>
+            <ul>
+                ${letterData.accountNumber ? `<li>Account Number: ${letterData.accountNumber}</li>` : ''}
+                ${letterData.membershipId ? `<li>Membership ID: ${letterData.membershipId}</li>` : ''}
+                ${letterData.email ? `<li>Email on file: ${letterData.email}</li>` : ''}
+            </ul>
+            
+            ${letterData.reason ? `<p>Reason for cancellation: ${letterData.reason}</p>` : ''}
+            
+            <p>Please send written confirmation that my account has been cancelled and that no future charges will be applied. If additional information is required, you may reach me at ${letterData.email || 'my preferred contact method'}.</p>
+            
+            <p>Thank you,<br>${letterData.fullName}</p>
+        </div>
+    `;
+}
+
+function buildLetterText(letterData, service) {
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const addressBlock = [letterData.fullName, letterData.addressLine1, letterData.cityStateZip].filter(Boolean).join('\n');
+    
+    return `
+${formattedDate}
+
+${addressBlock}
+
+${letterData.serviceName} Cancellation Department
+${service?.contact?.email || `support@${(service?.id || 'service').replace(/[^a-z0-9]/gi, '')}.com`}
+
+RE: Cancellation Request for ${letterData.serviceName}
+
+To whom it may concern,
+
+I am writing to officially cancel my ${letterData.serviceName} subscription effective immediately. Please confirm that my account will not be billed moving forward.
+
+Account details:
+${letterData.accountNumber ? `- Account Number: ${letterData.accountNumber}\n` : ''}${letterData.membershipId ? `- Membership ID: ${letterData.membershipId}\n` : ''}${letterData.email ? `- Email on file: ${letterData.email}\n` : ''}
+${letterData.reason ? `Reason for cancellation: ${letterData.reason}\n` : ''}
+Please send written confirmation that my account has been cancelled and that no future charges will be applied. If additional information is required, you may reach me at ${letterData.email || 'my preferred contact method'}.
+
+Thank you,
+${letterData.fullName}
+    `.trim();
+}
+
+async function copyLetterToClipboard() {
+    if (!lastGeneratedLetter) {
+        alert('Generate your letter first.');
+        return;
+    }
+    const content = lastGeneratedLetter.previewText || buildLetterText(lastGeneratedLetter);
+    try {
+        await navigator.clipboard.writeText(content);
+        alert('Letter copied to clipboard');
+    } catch (error) {
+        console.error('Clipboard error', error);
+        alert('Unable to copy letter. Please select and copy manually.');
+    }
+}
+
+async function downloadLetterAsPdf() {
+    if (!lastGeneratedLetter) {
+        alert('Generate your letter first.');
+        return;
+    }
+    
+    if (typeof html2pdf === 'undefined') {
+        window.print();
+        return;
+    }
+    
+    const element = document.getElementById('letterPreview');
+    await html2pdf().set({
+        margin: 0.5,
+        filename: `${lastGeneratedLetter.serviceName}_cancellation_letter.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+    }).from(element).save();
+}
+
+async function sendLetterToEmail(letterData, notifyUser = false) {
+    if (!letterData) {
+        if (notifyUser) alert('Generate your letter first.');
+        return;
+    }
+    if (!letterData.email) {
+        if (notifyUser) alert('Please include your email address in the form.');
+        return;
+    }
+    
+    const payload = {
+        email: letterData.email,
+        subject: `Cancellation Letter - ${letterData.serviceName}`,
+        html: letterData.previewHtml || buildLetterTemplate(letterData),
+        text: letterData.previewText || buildLetterText(letterData),
+        serviceName: letterData.serviceName
+    };
+    
+    try {
+        const response = await fetch('/api/send-letter', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to email letter');
+        }
+        
+        if (notifyUser) {
+            alert('Letter emailed to you successfully!');
+        }
+    } catch (error) {
+        console.error('Send letter error', error);
+        if (notifyUser) {
+            alert('Unable to send email right now. Please try again later or contact support.');
+        }
+    }
+}
+
+if (typeof window !== 'undefined') {
+    window.StopTheCharge = window.StopTheCharge || {};
+    Object.assign(window.StopTheCharge, {
+        setProStatus,
+        isProUser,
+        markLetterUnlocked,
+        sendLetterToEmail,
+        getPendingLetter,
+        clearPendingLetter,
+        initializeCancellationLetterPage,
+        PLAN_TYPES
+    });
+}
+
 // Save to localStorage
 function saveToLocalStorage(data) {
-    let subscriptions = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+    const subscriptions = getPersistedSubscriptions();
     subscriptions.push(data);
-    localStorage.setItem('subscriptions', JSON.stringify(subscriptions));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(subscriptions));
     console.log(`[${APP_NAME}] Saved to localStorage:`, data);
 }
 
 // Display subscriptions from localStorage
 function displaySubscriptions() {
-    const subscriptions = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+    const subscriptions = getPersistedSubscriptions();
     const listElement = document.getElementById('subscriptionsList');
     if (listElement && subscriptions.length > 0) {
         listElement.innerHTML = subscriptions.map(sub => `
@@ -2190,39 +2154,50 @@ function closeUpgradeModal() {
     if (modal) modal.remove();
 }
 
-async function checkout(plan) {
-    // Fetch price IDs from backend (which reads from env vars)
-    const priceIds = {
-        monthly: 'STRIPE_PRICE_MONTHLY',
-        yearly: 'STRIPE_PRICE_YEARLY'
+async function startCheckout(planKey, options = {}) {
+    const planConfig = {
+        monthly: {
+            priceId: 'STRIPE_PRICE_MONTHLY',
+            mode: 'subscription',
+            planType: PLAN_TYPES.MONTHLY
+        },
+        yearly: {
+            priceId: 'STRIPE_PRICE_YEARLY',
+            mode: 'subscription',
+            planType: PLAN_TYPES.YEARLY
+        },
+        cancellation_letter: {
+            priceId: 'STRIPE_PRICE_CANCEL_LETTER',
+            mode: 'payment',
+            planType: PLAN_TYPES.LETTER
+        }
     };
     
-    console.log('[Stripe] Starting checkout for plan:', plan);
-    console.log('[Stripe] Using price ID key:', priceIds[plan]);
+    const selectedPlan = planConfig[planKey];
+    if (!selectedPlan) {
+        throw new Error(`Unknown plan: ${planKey}`);
+    }
+    
+    const requestBody = {
+        priceId: selectedPlan.priceId,
+        mode: selectedPlan.mode,
+        planType: selectedPlan.planType,
+        email: options.email || localStorage.getItem('userEmail') || '',
+        metadata: options.metadata || {}
+    };
+    
+    if (options.letterData) {
+        savePendingLetter(options.letterData);
+        requestBody.metadata.letterId = options.letterData.letterId;
+        requestBody.metadata.serviceName = options.letterData.serviceName;
+    }
     
     try {
-        const requestBody = { 
-            priceId: priceIds[plan],
-            email: localStorage.getItem('userEmail') || ''
-        };
-        console.log('[Stripe] Request body:', requestBody);
-        console.log('[Stripe] Fetching:', window.location.origin + '/api/create-checkout');
-        
         const response = await fetch('/api/create-checkout', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
         });
-        
-        console.log('[Stripe] Response status:', response.status);
-        console.log('[Stripe] Response headers:', Object.fromEntries(response.headers.entries()));
-        
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('text/html')) {
-            const htmlText = await response.text();
-            console.error('[Stripe] Received HTML instead of JSON:', htmlText.substring(0, 500));
-            throw new Error('API endpoint not found (404). The serverless function may not be deployed correctly.');
-        }
         
         if (!response.ok) {
             const errorText = await response.text();
@@ -2237,10 +2212,7 @@ async function checkout(plan) {
         }
         
         const data = await response.json();
-        console.log('[Stripe] Success response:', data);
-        
         if (data.url) {
-            console.log('[Stripe] Redirecting to:', data.url);
             window.location.href = data.url;
         } else {
             throw new Error('No checkout URL received from server');
@@ -2249,6 +2221,10 @@ async function checkout(plan) {
         console.error('[Stripe] Checkout error:', error);
         alert(`Unable to process payment.\n\nError: ${error.message}\n\nPlease email hello@stopthecharge.com for assistance.`);
     }
+}
+
+async function checkout(plan) {
+    return startCheckout(plan, { metadata: { source: 'upgrade_modal' } });
 }
 
 // Show cancellation letter modal
@@ -2283,35 +2259,21 @@ function showCancellationLetterModal() {
 }
 
 // Checkout for cancellation letter (one-time payment)
-async function checkoutCancellationLetter() {
-    const priceId = 'STRIPE_PRICE_CANCEL_LETTER';
+async function checkoutCancellationLetter(letterData = null) {
+    const payload = letterData ? {
+        letterData: {
+            ...letterData,
+            letterId: letterData.letterId || `letter_${Date.now()}`
+        },
+        metadata: {
+            flow: 'cancellation_letter_generator'
+        },
+        email: letterData.email
+    } : {
+        metadata: { flow: 'dashboard_modal' }
+    };
     
-    try {
-        const response = await fetch('/api/create-checkout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                priceId: priceId,
-                mode: 'payment', // one-time payment instead of subscription
-                email: localStorage.getItem('userEmail') || ''
-            })
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Payment failed');
-        }
-        
-        const { url } = await response.json();
-        if (url) {
-            window.location.href = url;
-        } else {
-            throw new Error('No checkout URL received');
-        }
-    } catch (error) {
-        console.error('Cancellation letter checkout error:', error);
-        alert(`Unable to process payment at this time. Please try again or email hello@stopthecharge.com for assistance.\n\nError: ${error.message}`);
-    }
+    await startCheckout('cancellation_letter', payload);
 }
 /* Cache bust: 1763010662 */
 

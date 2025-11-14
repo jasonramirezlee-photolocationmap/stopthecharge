@@ -29,7 +29,7 @@ module.exports = async (req, res) => {
     console.log('[Stripe] API called with body:', req.body);
     
     const stripeClient = Stripe(stripeSecretKey);
-    let { priceId, email, mode = 'subscription' } = req.body;
+    let { priceId, email, mode = 'subscription', planType = 'unknown', metadata = {} } = req.body;
     
     // Map environment variable keys to actual Stripe price IDs
     const priceIdMap = {
@@ -53,7 +53,22 @@ module.exports = async (req, res) => {
         console.log('[Stripe] Mode:', mode);
         console.log('[Stripe] Email:', email);
         
-        const origin = req.headers.origin || req.headers.referer?.replace(/\/$/, '') || 'https://stopthecharge.vercel.app';
+        let origin = req.headers.origin || 'https://stopthecharge.vercel.app';
+        if (!req.headers.origin && req.headers.referer) {
+            try {
+                origin = new URL(req.headers.referer).origin;
+            } catch (error) {
+                console.warn('[Stripe] Unable to parse referer origin', error.message);
+            }
+        }
+        
+        const sanitizedMetadata = {};
+        Object.entries(metadata || {}).forEach(([key, value]) => {
+            if (value === undefined || value === null) return;
+            sanitizedMetadata[key] = String(value);
+        });
+        sanitizedMetadata.planType = planType;
+        sanitizedMetadata.source = sanitizedMetadata.source || 'stopthecharge_web';
         
         const session = await stripeClient.checkout.sessions.create({
             mode: mode,
@@ -61,8 +76,9 @@ module.exports = async (req, res) => {
             line_items: [{ price: priceId, quantity: 1 }],
             customer_email: email || undefined,
             success_url: `${origin}/success.html?session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${origin}/dashboard.html`,
-            metadata: { source: 'stopthecharge_web' }
+            cancel_url: `${origin}/cancel.html`,
+            metadata: sanitizedMetadata,
+            client_reference_id: email || undefined
         });
         
         console.log('[Stripe] Session created successfully:', session.id);

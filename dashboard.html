@@ -43,6 +43,16 @@
     <!-- Main Dashboard -->
     <div class="dashboard-container">
         <div class="container">
+            <div class="pro-banner" id="upgradeBanner">
+                <div class="pro-banner-content">
+                    <p class="plan-label" id="proStatusLabel">Free plan · Limit 3 subscriptions</p>
+                    <p class="plan-subtext">Upgrade to unlock unlimited tracking, reminders, and exports.</p>
+                </div>
+                <div class="pro-banner-actions">
+                    <button class="cta-button cta-primary" data-upgrade="true">Upgrade to Pro</button>
+                    <a href="cancellation-letter.html" class="cta-button cta-secondary">Need a letter?</a>
+                </div>
+            </div>
             <!-- Top Stats -->
             <section class="dashboard-stats">
                 <div class="stat-card">
@@ -73,6 +83,13 @@
                         <p class="stat-value" id="totalSaved">$0.00</p>
                     </div>
                 </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🧮</div>
+                    <div class="stat-content">
+                        <p class="stat-label">Cancel Everything Savings</p>
+                        <p class="stat-value" id="potentialSavings">$0.00</p>
+                    </div>
+                </div>
             </section>
 
             <div class="dashboard-layout">
@@ -88,6 +105,10 @@
                         <!-- Add Subscription Form (Hidden by default) -->
                         <div class="add-subscription-form" id="addSubForm" style="display: none;">
                             <h3>Add New Subscription</h3>
+                            <div class="limit-note" id="freeLimitMessage">
+                                <span>Free plan users can track up to 3 subscriptions.</span>
+                                <button type="button" class="link-button" data-upgrade="true">Upgrade to Pro</button>
+                            </div>
                             <form id="newSubscriptionForm">
                                 <div class="form-group">
                                     <label for="userEmail">Your Email *</label>
@@ -128,6 +149,18 @@
                         </div>
 
                         <!-- Subscriptions Table -->
+                        <div class="table-toolbar">
+                            <div class="filter-chips" id="subscriptionCategoryFilters">
+                                <button class="chip active" data-category="all">All</button>
+                                <button class="chip" data-category="streaming">Streaming</button>
+                                <button class="chip" data-category="fitness">Fitness</button>
+                                <button class="chip" data-category="software">Software</button>
+                                <button class="chip" data-category="gaming">Gaming</button>
+                                <button class="chip" data-category="food">Food</button>
+                                <button class="chip" data-category="news">News</button>
+                                <button class="chip" data-category="other">Other</button>
+                            </div>
+                        </div>
                         <div class="subscriptions-table-wrapper" id="subscriptionsWrapper">
                             <table class="subscriptions-table" id="subscriptionsTable">
                                 <thead>
@@ -153,7 +186,7 @@
                     <section class="dashboard-section">
                         <h2>Savings Tracker</h2>
                         <div class="savings-chart">
-                            <p class="chart-placeholder">📊 Savings history chart would appear here</p>
+                            <canvas id="spendingChart" height="220"></canvas>
                             <div class="chart-info">
                                 <div class="chart-metric">
                                     <span class="metric-label">This Month</span>
@@ -188,6 +221,7 @@
                         <h3>Quick Links</h3>
                         <ul class="quick-links">
                             <li><a href="/public/directory.html" class="quick-link-btn">🔍 Browse Services</a></li>
+                                <li><a href="cancellation-letter.html" class="quick-link-btn">✉️ Cancellation Letter</a></li>
                             <li><a href="#" class="quick-link-btn">📧 Contact Support</a></li>
                             <li><a href="#" class="quick-link-btn">💡 Tips & Tricks</a></li>
                             <li><a href="#" class="quick-link-btn">⚙️ Settings</a></li>
@@ -223,6 +257,8 @@
 
     <!-- N8N Configuration -->
     <script src="config/n8n-config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/services-data.js"></script>
     <script src="js/app.js"></script>
     <script>
         // Initialize dashboard page
