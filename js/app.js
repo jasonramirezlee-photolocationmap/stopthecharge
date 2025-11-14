@@ -779,9 +779,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Homepage subscription form with free tier limit
     const homePageForm = document.getElementById("addSubscriptionForm");
     if (homePageForm) {
-        homePageForm.addEventListener("submit", async (e) => {
+        homePageForm.addEventListener("submit", (e) => {
             e.preventDefault();
-            const currentSubs = JSON.parse(localStorage.getItem("subscriptions") || "[]");
+            const currentSubs = getPersistedSubscriptions();
             if (currentSubs.length >= FREE_TIER_LIMIT) {
                 showUpgradeModal();
                 return;
@@ -793,21 +793,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Dashboard subscription form with free tier limit
     const dashboardForm = document.getElementById('newSubscriptionForm');
     if (dashboardForm) {
-        dashboardForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            // Check subscription limit for free tier
-            const currentSubs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
-            if (currentSubs.length >= FREE_TIER_LIMIT) {
-                showUpgradeModal();
-                return;
-            }
-            
-            // Continue with existing dashboard form handling
-            function handleAddNewSubscription(e) {
-    e.preventDefault();
-    e.stopPropagation();
-        });
+        dashboardForm.addEventListener('submit', handleAddNewSubscription);
     }
     
     console.log(`[${APP_NAME}] Initializing application...`);
@@ -1958,7 +1944,7 @@ function handleAddNewSubscription(e) {
     e.preventDefault();
     
     // Check subscription limit for free tier
-    const currentSubs = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+    const currentSubs = getPersistedSubscriptions();
     if (currentSubs.length >= FREE_TIER_LIMIT) {
         showUpgradeModal();
         return;
@@ -2059,11 +2045,37 @@ function handleExportData() {
 }
 
 /* ========================================
-   UTILITY FUNCTIONS
-   ======================================== */
-function getSubscriptionsFromStorage() {
+    UTILITY FUNCTIONS
+    ======================================== */
+function getPersistedSubscriptions() {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : SAMPLE_SUBSCRIPTIONS;
+    if (stored) {
+        try {
+            return JSON.parse(stored);
+        } catch (error) {
+            console.warn(`[${APP_NAME}] Failed to parse subscriptions from ${STORAGE_KEY}:`, error);
+            return [];
+        }
+    }
+    
+    const legacy = localStorage.getItem('subscriptions');
+    if (legacy) {
+        try {
+            const parsed = JSON.parse(legacy);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+            localStorage.removeItem('subscriptions');
+            return parsed;
+        } catch (error) {
+            console.warn(`[${APP_NAME}] Failed to parse legacy subscriptions:`, error);
+        }
+    }
+    
+    return [];
+}
+
+function getSubscriptionsFromStorage() {
+    const stored = getPersistedSubscriptions();
+    return stored.length ? stored : SAMPLE_SUBSCRIPTIONS;
 }
 
 function saveSubscriptionsToStorage(subscriptions) {
@@ -2110,15 +2122,15 @@ function setupNavigation() {
 
 // Save to localStorage
 function saveToLocalStorage(data) {
-    let subscriptions = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+    const subscriptions = getPersistedSubscriptions();
     subscriptions.push(data);
-    localStorage.setItem('subscriptions', JSON.stringify(subscriptions));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(subscriptions));
     console.log(`[${APP_NAME}] Saved to localStorage:`, data);
 }
 
 // Display subscriptions from localStorage
 function displaySubscriptions() {
-    const subscriptions = JSON.parse(localStorage.getItem('subscriptions') || '[]');
+    const subscriptions = getPersistedSubscriptions();
     const listElement = document.getElementById('subscriptionsList');
     if (listElement && subscriptions.length > 0) {
         listElement.innerHTML = subscriptions.map(sub => `
