@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Generate professional cancellation letters for any subscription.">
+    <meta name="theme-color" content="#4F46E5">
+    <title>Cancellation Letter Generator - StopTheCharge</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-brand">
+                <a href="index.html" class="logo-link">💳 StopTheCharge</a>
+            </div>
+            <button class="navbar-toggle" id="navbarToggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="navbarMenu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="navbar-menu" id="navbarMenu">
+                <li><a href="index.html" class="nav-link">Home</a></li>
+                <li><a href="directory.html" class="nav-link">Directory</a></li>
+                <li><a href="dashboard.html" class="nav-link">Dashboard</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <header class="header header-secondary">
+        <div class="container">
+            <h1>Cancellation Letter Generator</h1>
+            <p>Pay once. Get a legally formatted cancellation letter you can email or mail instantly.</p>
+        </div>
+    </header>
+
+    <main class="letter-container">
+        <div class="container letter-grid">
+            <section class="letter-form-card">
+                <h2>Your Details</h2>
+                <form id="letterForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="fullName">Full Name *</label>
+                            <input type="text" id="fullName" name="fullName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email *</label>
+                            <input type="email" id="email" name="email" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="addressLine1">Mailing Address *</label>
+                        <input type="text" id="addressLine1" name="addressLine1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cityStateZip">City, State ZIP *</label>
+                        <input type="text" id="cityStateZip" name="cityStateZip" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="letterService">Service *</label>
+                        <select id="letterService" name="service" required>
+                            <option value="" disabled selected>Select a service</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="accountNumber">Account Number</label>
+                            <input type="text" id="accountNumber" name="accountNumber" placeholder="Optional but helpful">
+                        </div>
+                        <div class="form-group">
+                            <label for="membershipId">Membership ID</label>
+                            <input type="text" id="membershipId" name="membershipId" placeholder="Optional">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="reason">Reason (optional)</label>
+                        <textarea id="reason" name="reason" rows="3" placeholder="Why are you canceling?"></textarea>
+                    </div>
+                    <button type="submit" class="cta-button cta-primary">Preview Letter</button>
+                </form>
+                <div class="letter-lock-message" id="letterLockMessage">
+                    <p>🔒 Download, copy, and email buttons unlock after the $12 one-time payment.</p>
+                </div>
+                <div class="letter-actions">
+                    <button class="cta-button cta-secondary" id="copyLetterBtn" disabled>Copy to Clipboard</button>
+                    <button class="cta-button cta-secondary" id="downloadLetterBtn" disabled>Download PDF</button>
+                    <button class="cta-button cta-secondary" id="emailLetterBtn" disabled>Email Letter</button>
+                    <button class="cta-button cta-primary" id="purchaseLetterBtn" disabled>Unlock Letter - $12</button>
+                </div>
+            </section>
+
+            <section class="letter-preview-card">
+                <div class="letter-preview-header">
+                    <h2>Letter Preview</h2>
+                    <p>Make sure everything is accurate before purchasing.</p>
+                </div>
+                <div class="letter-preview" id="letterPreview">
+                    <p>Fill out the form to generate your letter.</p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <section class="letter-faq">
+        <div class="container">
+            <h3>What you get</h3>
+            <div class="letter-faq-grid">
+                <div class="faq-item">
+                    <h4>✅ Legally formatted letter</h4>
+                    <p>Works for mail, email, or fax. Includes all required details.</p>
+                </div>
+                <div class="faq-item">
+                    <h4>✅ Instant delivery</h4>
+                    <p>Download immediately and get a copy emailed to you.</p>
+                </div>
+                <div class="faq-item">
+                    <h4>✅ Works for any service</h4>
+                    <p>Pick from 100+ built-in services or create your own.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 StopTheCharge. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.9.3/dist/html2pdf.bundle.min.js"></script>
+    <script src="config/n8n-config.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggle = document.getElementById('navbarToggle');
+            const menu = document.getElementById('navbarMenu');
+            if (toggle && menu) {
+                toggle.addEventListener('click', () => {
+                    menu.classList.toggle('active');
+                    toggle.setAttribute('aria-expanded', menu.classList.contains('active'));
+                });
+            }
+            window.StopTheCharge?.initializeCancellationLetterPage?.();
+        });
+    </script>
+</body>
+</html>

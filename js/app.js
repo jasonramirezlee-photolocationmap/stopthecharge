@@ -16,6 +16,19 @@ const APP_NAME = 'StopTheCharge';
 const SERVICE_WORKER_PATH = 'service-worker.js'; // Relative path from /public
 const STORAGE_KEY = 'stopthecharge_subscriptions';
 const STORAGE_SAVINGS_KEY = 'stopthecharge_savings';
+const PRO_STATUS_KEY = 'stopthecharge_pro_status';
+const PRO_METADATA_KEY = 'stopthecharge_pro_metadata';
+const LETTER_DATA_KEY = 'stopthecharge_pending_letter';
+const LETTER_UNLOCK_KEY = 'stopthecharge_letter_unlocked';
+const PRO_STATUS = {
+    FREE: 'free',
+    PRO: 'pro'
+};
+const PLAN_TYPES = {
+    MONTHLY: 'pro_monthly',
+    YEARLY: 'pro_yearly',
+    LETTER: 'cancellation_letter'
+};
 const N8N_WEBHOOK_ENABLED = true; // Set to false to disable webhooks
 const FREE_TIER_LIMIT = 3; // Maximum subscriptions for free tier
 
@@ -29,6 +42,9 @@ let appState = {
     services: [],
     subscriptions: []
 };
+let activeCategoryFilter = 'all';
+let spendingChart = null;
+let lastGeneratedLetter = null;
 
 /* ========================================
    MOCK DATA: SUBSCRIPTION SERVICES
@@ -629,6 +645,181 @@ const SERVICES_DATA = [
     }
 ];
 
+const SERVICE_TEMPLATE_SETS = [
+    {
+        category: 'streaming',
+        icon: '🎬',
+        difficulty: 'easy',
+        estimatedTime: '3 minutes',
+        cancellationMethod: 'Online',
+        baseCost: 12.99,
+        names: [
+            'Max (HBO)', 'Paramount+', 'Peacock', 'YouTube Premium', 'Apple TV+',
+            'Crunchyroll', 'Showtime', 'Starz', 'Discovery+', 'ESPN+',
+            'BET+', 'Sling TV', 'FuboTV', 'Philo', 'Vudu',
+            'Tubi', 'Pluto TV', 'Kanopy', 'BritBox', 'Acorn TV',
+            'Shudder', 'Funimation', 'DAZN', 'Hallmark Movies Now', 'Hulu Live TV'
+        ]
+    },
+    {
+        category: 'fitness',
+        icon: '💪',
+        difficulty: 'medium',
+        estimatedTime: '10 minutes',
+        cancellationMethod: 'In-Person/Phone',
+        baseCost: 29.99,
+        names: [
+            'OrangeTheory Fitness', 'Anytime Fitness', 'Gold\'s Gym', '24 Hour Fitness',
+            'Snap Fitness', 'Crunch Fitness', 'YMCA Membership', 'Pure Barre',
+            'CorePower Yoga', 'Lifetime Fitness', 'Blink Fitness', 'Retro Fitness',
+            'SoulCycle', 'Barry\'s Bootcamp', 'Orangetheory All Access'
+        ]
+    },
+    {
+        category: 'software',
+        icon: '💻',
+        difficulty: 'easy',
+        estimatedTime: '2 minutes',
+        cancellationMethod: 'Online',
+        baseCost: 14.99,
+        names: [
+            'Notion Plus', 'Evernote Premium', 'Grammarly Premium', 'Canva Pro',
+            'Zoom Pro', 'Slack Pro', 'Asana Premium', 'Todoist Pro',
+            'LastPass Premium', 'Quicken Deluxe', 'QuickBooks Online', '1Password Families',
+            'Google Workspace', 'GitHub Copilot', 'Figma Professional', 'Monday.com', 'Bitwarden Families'
+        ]
+    },
+    {
+        category: 'gaming',
+        icon: '🎮',
+        difficulty: 'easy',
+        estimatedTime: '3 minutes',
+        cancellationMethod: 'Online',
+        baseCost: 9.99,
+        names: [
+            'EA Play', 'Ubisoft+', 'GeForce NOW', 'Apple Arcade',
+            'Google Play Pass', 'Minecraft Realms', 'RuneScape Membership',
+            'Final Fantasy XIV Online', 'World of Warcraft', 'Roblox Premium'
+        ]
+    },
+    {
+        category: 'news',
+        icon: '📰',
+        difficulty: 'easy',
+        estimatedTime: '2 minutes',
+        cancellationMethod: 'Online',
+        baseCost: 19.99,
+        names: [
+            'Washington Post', 'Los Angeles Times', 'The Atlantic', 'Bloomberg',
+            'The Economist', 'The New Yorker', 'USA Today', 'Time Magazine',
+            'Business Insider', 'Barron\'s'
+        ]
+    },
+    {
+        category: 'shopping',
+        icon: '🛒',
+        difficulty: 'easy',
+        estimatedTime: '2 minutes',
+        cancellationMethod: 'Online',
+        baseCost: 14.99,
+        names: [
+            'Instacart+', 'DoorDash DashPass', 'Uber One', 'Walmart+',
+            'Target Circle', 'Best Buy TotalTech', 'Chewy Autoship',
+            'Hello Bello Diaper Subscription', 'Sephora Flash', 'Stitch Fix Premium',
+            'Ipsy Glam Bag', 'Poshmark Closets'
+        ]
+    },
+    {
+        category: 'education',
+        icon: '📚',
+        difficulty: 'easy',
+        estimatedTime: '4 minutes',
+        cancellationMethod: 'Online',
+        baseCost: 19.99,
+        names: [
+            'Duolingo Plus', 'MasterClass', 'Skillshare', 'Coursera Plus',
+            'Udemy Pro', 'Brilliant.org', 'Codecademy Pro', 'LinkedIn Learning',
+            'Khan Academy Supporter', 'ABCmouse'
+        ]
+    },
+    {
+        category: 'finance',
+        icon: '💳',
+        difficulty: 'medium',
+        estimatedTime: '5 minutes',
+        cancellationMethod: 'Online/Phone',
+        baseCost: 24.99,
+        names: [
+            'LifeLock', 'Identity Guard', 'Credit Karma Money', 'Experian Boost Premium', 'Rocket Money Premium'
+        ]
+    }
+];
+
+const existingServiceIds = new Set(SERVICES_DATA.map(service => service.id));
+
+SERVICE_TEMPLATE_SETS.forEach(template => {
+    template.names.forEach((name, index) => {
+        const serviceId = slugifyServiceName(name);
+        if (existingServiceIds.has(serviceId)) return;
+        const service = buildServiceFromTemplate({
+            id: serviceId,
+            name,
+            icon: template.icon,
+            category: template.category,
+            difficulty: template.difficulty,
+            cost: Number((template.baseCost + (index % 5)).toFixed(2)),
+            estimatedTime: template.estimatedTime,
+            cancellationMethod: template.cancellationMethod
+        });
+        SERVICES_DATA.push(service);
+        existingServiceIds.add(serviceId);
+    });
+});
+
+function buildServiceFromTemplate(template) {
+    const defaultSteps = [
+        `Log into your ${template.name} account`,
+        'Navigate to billing or subscription settings',
+        'Select manage or cancel subscription',
+        `Follow the prompts to cancel ${template.name}`,
+        'Confirm cancellation and save the confirmation number'
+    ];
+    
+    return {
+        id: template.id,
+        name: template.name,
+        icon: template.icon,
+        category: template.category,
+        difficulty: template.difficulty,
+        cost: template.cost,
+        estimatedTime: template.estimatedTime,
+        cancellationMethod: template.cancellationMethod,
+        steps: defaultSteps,
+        notes: [
+            `${template.name} may allow you to pause instead of canceling.`,
+            'Access typically continues through the end of the billing cycle.',
+            'Contact support if you do not receive a confirmation email.'
+        ],
+        reviews: [
+            {
+                rating: template.difficulty === 'hard' ? 2 : template.difficulty === 'medium' ? 4 : 5,
+                username: `${template.category}User`,
+                date: '2025-11-01',
+                text: `Cancellation was ${template.difficulty} for me, but these steps helped.`
+            }
+        ],
+        contact: {
+            phone: template.difficulty === 'hard' ? '1-800-000-0000' : 'Online Support',
+            email: `support@${template.id.replace(/-/g, '')}.com`,
+            chat: 'Yes'
+        }
+    };
+}
+
+function slugifyServiceName(name) {
+    return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
 /* ========================================
    MOCK SAVED SUBSCRIPTIONS (Sample Data)
    ======================================== */
@@ -795,6 +986,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dashboardForm) {
         dashboardForm.addEventListener('submit', handleAddNewSubscription);
     }
+    
+    document.querySelectorAll('[data-upgrade="true"]').forEach(btn => {
+        btn.addEventListener('click', (event) => {
+            event.preventDefault();
+            showUpgradeModal();
+        });
+    });
+    
+    syncProUI();
     
     console.log(`[${APP_NAME}] Initializing application...`);
     
@@ -1491,7 +1691,7 @@ function handleFilterChange(e) {
 function viewServiceDetail(serviceId) {
     // Store service ID in sessionStorage for detail page
     sessionStorage.setItem('selectedServiceId', serviceId);
-    window.location.href = `/public/service-detail.html`;
+    window.location.href = `/service/${serviceId}.html`;
 }
 
 /* ========================================
@@ -1504,7 +1704,8 @@ function initializeServiceDetail() {
     setupNavigation();
     
     // Get service ID from sessionStorage
-    const serviceId = sessionStorage.getItem('selectedServiceId') || 'netflix';
+    const pathMatch = window.location.pathname.match(/service\/([^/]+)\.html$/);
+    const serviceId = pathMatch ? pathMatch[1] : (sessionStorage.getItem('selectedServiceId') || 'netflix');
     const service = SERVICES_DATA.find(s => s.id === serviceId);
     
     console.log(`[${APP_NAME}] Looking for service ID: ${serviceId}`);
@@ -1515,6 +1716,12 @@ function initializeServiceDetail() {
     }
     
     console.log(`[${APP_NAME}] ✅ Found service: ${service.name}`);
+    
+    document.title = `${service.name} Cancellation Guide - StopTheCharge`;
+    const metaDescription = document.querySelector('meta[name="description"]');
+    if (metaDescription) {
+        metaDescription.setAttribute('content', `Learn how to cancel ${service.name} with simple, step-by-step instructions from StopTheCharge.`);
+    }
     
     // Populate service details
     populateServiceDetail(service);
@@ -1800,6 +2007,14 @@ function initializeDashboard() {
     appState.subscriptions = getSubscriptionsFromStorage();
     console.log(`[${APP_NAME}] Loaded ${appState.subscriptions.length} subscriptions from storage`);
     
+    const storedEmail = localStorage.getItem('userEmail');
+    if (storedEmail) {
+        const emailInput = document.getElementById('userEmail');
+        if (emailInput) {
+            emailInput.value = storedEmail;
+        }
+    }
+    
     // Render dashboard
     updateDashboardStats();
     renderSubscriptionsTable();
@@ -1835,6 +2050,9 @@ function initializeDashboard() {
         showCancellationLetterModal();
     });
     // Form submit handler is now in DOMContentLoaded with free tier limit check
+    setupSubscriptionFilters();
+    syncProUI();
+    setupSpendingChart();
     
     console.log(`[${APP_NAME}] Dashboard initialized successfully`);
 }
@@ -1857,6 +2075,12 @@ function updateDashboardStats() {
     if (savedThisMonthEl) savedThisMonthEl.textContent = `$${savings.thisMonth.toFixed(2)}`;
     if (totalSavedEl) totalSavedEl.textContent = `$${savings.allTime.toFixed(2)}`;
     
+    const potentialSavingsEl = document.getElementById('potentialSavings');
+    if (potentialSavingsEl) {
+        const annualSavings = totalMonthly * 12;
+        potentialSavingsEl.textContent = `$${annualSavings.toFixed(2)}`;
+    }
+    
     // Update chart metrics
     const chartThisMonth = document.getElementById('chartThisMonth');
     const chartLastMonth = document.getElementById('chartLastMonth');
@@ -1865,6 +2089,9 @@ function updateDashboardStats() {
     if (chartThisMonth) chartThisMonth.textContent = `$${savings.thisMonth.toFixed(0)}`;
     if (chartLastMonth) chartLastMonth.textContent = `$${(savings.allTime * 0.8).toFixed(0)}`;
     if (chartAverage) chartAverage.textContent = `$${(savings.allTime / 3).toFixed(0)}`;
+    
+    updateSpendingHistory(totalMonthly);
+    renderSpendingChart();
 }
 
 function renderSubscriptionsTable() {
@@ -1875,6 +2102,10 @@ function renderSubscriptionsTable() {
     if (!tbody) return;
     
     const subscriptions = appState.subscriptions;
+    const filtered = subscriptions.filter(sub => {
+        if (activeCategoryFilter === 'all') return true;
+        return sub.category === activeCategoryFilter;
+    });
     
     if (subscriptions.length === 0) {
         emptyMsg.style.display = 'block';
@@ -1883,7 +2114,15 @@ function renderSubscriptionsTable() {
     
     emptyMsg.style.display = 'none';
     
-    tbody.innerHTML = subscriptions.map(sub => `
+    if (filtered.length === 0) {
+        tbody.innerHTML = '';
+        emptyMsg.style.display = 'block';
+        emptyMsg.textContent = 'No subscriptions match this category yet.';
+        return;
+    }
+    
+    emptyMsg.textContent = '';
+    tbody.innerHTML = filtered.map(sub => `
         <tr>
             <td>${sub.serviceName}</td>
             <td><span class="category-tag">${sub.category}</span></td>
@@ -1894,6 +2133,26 @@ function renderSubscriptionsTable() {
             </td>
         </tr>
     `).join('');
+}
+
+function setupSubscriptionFilters() {
+    const filterContainer = document.getElementById('subscriptionCategoryFilters');
+    if (!filterContainer) return;
+    
+    filterContainer.querySelectorAll('button[data-category]').forEach(button => {
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            const category = button.dataset.category;
+            applySubscriptionFilter(category);
+            filterContainer.querySelectorAll('button[data-category]').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+        });
+    });
+}
+
+function applySubscriptionFilter(category) {
+    activeCategoryFilter = category || 'all';
+    renderSubscriptionsTable();
 }
 
 function renderUpcomingRenewals() {
@@ -1943,11 +2202,15 @@ function toggleAddForm() {
 function handleAddNewSubscription(e) {
     e.preventDefault();
     
-    // Check subscription limit for free tier
     const currentSubs = getPersistedSubscriptions();
-    if (currentSubs.length >= FREE_TIER_LIMIT) {
+    if (!isProUser() && currentSubs.length >= FREE_TIER_LIMIT) {
         showUpgradeModal();
         return;
+    }
+    
+    const emailInput = document.getElementById('userEmail');
+    if (emailInput?.value) {
+        localStorage.setItem('userEmail', emailInput.value.trim());
     }
     
     const name = document.getElementById('subName').value;
@@ -2092,6 +2355,109 @@ function calculateSavings(subscriptions) {
     };
 }
 
+function getSpendingHistory() {
+    const stored = localStorage.getItem(STORAGE_SAVINGS_KEY);
+    if (stored) {
+        try {
+            return JSON.parse(stored);
+        } catch (error) {
+            console.warn(`[${APP_NAME}] Failed to parse savings history:`, error);
+        }
+    }
+    return generateDefaultSpendingHistory();
+}
+
+function generateDefaultSpendingHistory() {
+    const months = [];
+    const today = new Date();
+    for (let i = 5; i >= 0; i--) {
+        const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+        months.push({
+            label: date.toLocaleString('en-US', { month: 'short' }),
+            month: date.getMonth(),
+            year: date.getFullYear(),
+            amount: Math.round((200 + Math.random() * 300) * 100) / 100
+        });
+    }
+    return months;
+}
+
+function updateSpendingHistory(totalMonthly) {
+    if (typeof totalMonthly !== 'number') return;
+    const history = getSpendingHistory();
+    const now = new Date();
+    const existing = history.find(entry => entry.month === now.getMonth() && entry.year === now.getFullYear());
+    
+    if (existing) {
+        existing.amount = Math.round(totalMonthly * 100) / 100;
+    } else {
+        history.push({
+            label: now.toLocaleString('en-US', { month: 'short' }),
+            month: now.getMonth(),
+            year: now.getFullYear(),
+            amount: Math.round(totalMonthly * 100) / 100
+        });
+    }
+    
+    while (history.length > 12) {
+        history.shift();
+    }
+    
+    localStorage.setItem(STORAGE_SAVINGS_KEY, JSON.stringify(history));
+}
+
+function renderSpendingChart() {
+    const chartElement = document.getElementById('spendingChart');
+    if (!chartElement || typeof Chart === 'undefined') {
+        return;
+    }
+    
+    const history = getSpendingHistory();
+    const labels = history.map(entry => entry.label);
+    const data = history.map(entry => entry.amount);
+    
+    if (spendingChart) {
+        spendingChart.data.labels = labels;
+        spendingChart.data.datasets[0].data = data;
+        spendingChart.update();
+        return;
+    }
+    
+    spendingChart = new Chart(chartElement, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Monthly Spending',
+                data,
+                borderColor: '#4f46e5',
+                backgroundColor: 'rgba(79,70,229,0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: (value) => `$${value}`
+                    }
+                }
+            }
+        }
+    });
+}
+
+function setupSpendingChart() {
+    renderSpendingChart();
+}
+
 function getCurrentDate() {
     return new Date().toISOString().split('T')[0];
 }
@@ -2118,6 +2484,352 @@ function setupNavigation() {
             });
         });
     }
+}
+
+function getProMetadata() {
+    try {
+        const stored = localStorage.getItem(PRO_METADATA_KEY);
+        return stored ? JSON.parse(stored) : {};
+    } catch (error) {
+        console.warn(`[${APP_NAME}] Failed to parse pro metadata`, error);
+        return {};
+    }
+}
+
+function isProUser() {
+    return localStorage.getItem(PRO_STATUS_KEY) === PRO_STATUS.PRO;
+}
+
+function setProStatus(isPro, metadata = {}) {
+    localStorage.setItem(PRO_STATUS_KEY, isPro ? PRO_STATUS.PRO : PRO_STATUS.FREE);
+    localStorage.setItem(PRO_METADATA_KEY, JSON.stringify(metadata));
+    syncProUI();
+}
+
+function syncProUI() {
+    const isPro = isProUser();
+    const body = document.body;
+    if (body) {
+        body.classList.toggle('pro-user', isPro);
+    }
+    
+    const upgradeBanner = document.getElementById('upgradeBanner');
+    if (upgradeBanner) {
+        upgradeBanner.style.display = isPro ? 'none' : 'flex';
+    }
+    
+    const proBadge = document.getElementById('proStatusLabel');
+    if (proBadge) {
+        proBadge.textContent = isPro
+            ? 'Pro plan · Unlimited subscriptions unlocked'
+            : `Free plan · Limit ${FREE_TIER_LIMIT} subscriptions`;
+    }
+    
+    const limitMessage = document.getElementById('freeLimitMessage');
+    if (limitMessage) {
+        limitMessage.style.display = isPro ? 'none' : 'flex';
+    }
+    
+    const addButton = document.getElementById('addSubBtn');
+    if (addButton) {
+        addButton.textContent = isPro ? '+ Add Subscription' : '+ Add Subscription (Free)';
+    }
+}
+
+function savePendingLetter(data) {
+    localStorage.setItem(LETTER_DATA_KEY, JSON.stringify(data));
+}
+
+function getPendingLetter() {
+    try {
+        const stored = localStorage.getItem(LETTER_DATA_KEY);
+        return stored ? JSON.parse(stored) : null;
+    } catch (error) {
+        console.warn(`[${APP_NAME}] Failed to parse pending letter`, error);
+        return null;
+    }
+}
+
+function clearPendingLetter() {
+    localStorage.removeItem(LETTER_DATA_KEY);
+}
+
+function markLetterUnlocked() {
+    localStorage.setItem(LETTER_UNLOCK_KEY, 'true');
+}
+
+function isLetterUnlocked() {
+    return localStorage.getItem(LETTER_UNLOCK_KEY) === 'true';
+}
+
+function resetLetterUnlock() {
+    localStorage.removeItem(LETTER_UNLOCK_KEY);
+}
+
+function renderLetterPreview(html) {
+    const preview = document.getElementById('letterPreview');
+    if (preview) {
+        preview.innerHTML = html;
+    }
+}
+
+function updateLetterActionsState(isUnlocked) {
+    const copyBtn = document.getElementById('copyLetterBtn');
+    const downloadBtn = document.getElementById('downloadLetterBtn');
+    const emailBtn = document.getElementById('emailLetterBtn');
+    const purchaseBtn = document.getElementById('purchaseLetterBtn');
+    const lockMessage = document.getElementById('letterLockMessage');
+    
+    [copyBtn, downloadBtn, emailBtn].forEach(btn => {
+        if (btn) {
+            btn.disabled = !isUnlocked;
+        }
+    });
+    
+    if (purchaseBtn) {
+        purchaseBtn.disabled = isUnlocked || !lastGeneratedLetter;
+        purchaseBtn.textContent = isUnlocked ? 'Letter Unlocked' : 'Unlock Letter - $12';
+        purchaseBtn.classList.toggle('cta-disabled', !lastGeneratedLetter);
+    }
+    
+    if (lockMessage) {
+        lockMessage.style.display = isUnlocked ? 'none' : 'flex';
+    }
+}
+
+function initializeCancellationLetterPage() {
+    setupNavigation();
+    const form = document.getElementById('letterForm');
+    const serviceSelect = document.getElementById('letterService');
+    
+    if (serviceSelect) {
+        populateLetterServiceOptions(serviceSelect);
+    }
+    
+    if (!form) return;
+    
+    form.addEventListener('submit', handleLetterFormSubmit);
+    
+    document.getElementById('copyLetterBtn')?.addEventListener('click', copyLetterToClipboard);
+    document.getElementById('downloadLetterBtn')?.addEventListener('click', downloadLetterAsPdf);
+    document.getElementById('emailLetterBtn')?.addEventListener('click', () => {
+        if (!lastGeneratedLetter) {
+            alert('Generate your letter first.');
+            return;
+        }
+        sendLetterToEmail(lastGeneratedLetter, true);
+    });
+    document.getElementById('purchaseLetterBtn')?.addEventListener('click', () => {
+        if (!lastGeneratedLetter) {
+            alert('Please generate your letter before purchasing.');
+            return;
+        }
+        checkoutCancellationLetter(lastGeneratedLetter);
+    });
+    
+    const storedLetter = getPendingLetter();
+    if (storedLetter?.previewHtml) {
+        lastGeneratedLetter = storedLetter;
+        renderLetterPreview(storedLetter.previewHtml);
+    }
+    
+    updateLetterActionsState(isLetterUnlocked());
+}
+
+function populateLetterServiceOptions(selectEl) {
+    const fragment = document.createDocumentFragment();
+    const sorted = [...SERVICES_DATA].sort((a, b) => a.name.localeCompare(b.name));
+    sorted.forEach(service => {
+        const option = document.createElement('option');
+        option.value = service.id;
+        option.textContent = `${service.name} (${service.category})`;
+        fragment.appendChild(option);
+    });
+    selectEl.appendChild(fragment);
+}
+
+function handleLetterFormSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const serviceId = formData.get('service');
+    const service = SERVICES_DATA.find(s => s.id === serviceId);
+    
+    const letterData = {
+        letterId: `letter_${Date.now()}`,
+        fullName: formData.get('fullName')?.trim(),
+        email: formData.get('email')?.trim(),
+        addressLine1: formData.get('addressLine1')?.trim(),
+        cityStateZip: formData.get('cityStateZip')?.trim(),
+        serviceId,
+        serviceName: service?.name || formData.get('customService') || 'Your Subscription',
+        accountNumber: formData.get('accountNumber')?.trim(),
+        membershipId: formData.get('membershipId')?.trim(),
+        reason: formData.get('reason')?.trim(),
+        createdAt: new Date().toISOString()
+    };
+    
+    letterData.previewHtml = buildLetterTemplate(letterData, service);
+    letterData.previewText = buildLetterText(letterData, service);
+    
+    lastGeneratedLetter = letterData;
+    savePendingLetter(letterData);
+    resetLetterUnlock();
+    renderLetterPreview(letterData.previewHtml);
+    updateLetterActionsState(false);
+}
+
+function buildLetterTemplate(letterData, service) {
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const addressBlock = [letterData.fullName, letterData.addressLine1, letterData.cityStateZip].filter(Boolean).join('<br>');
+    
+    return `
+        <div class="letter-document">
+            <p>${formattedDate}</p>
+            <p>${addressBlock}</p>
+            
+            <p>${letterData.serviceName} Cancellation Department<br>
+            ${service?.contact?.email || `support@${(service?.id || 'service').replace(/[^a-z0-9]/gi, '')}.com`}</p>
+            
+            <p><strong>RE: Cancellation Request for ${letterData.serviceName}</strong></p>
+            
+            <p>To whom it may concern,</p>
+            <p>I am writing to officially cancel my ${letterData.serviceName} subscription effective immediately. Please confirm that my account will not be billed moving forward.</p>
+            
+            <p><strong>Account details:</strong></p>
+            <ul>
+                ${letterData.accountNumber ? `<li>Account Number: ${letterData.accountNumber}</li>` : ''}
+                ${letterData.membershipId ? `<li>Membership ID: ${letterData.membershipId}</li>` : ''}
+                ${letterData.email ? `<li>Email on file: ${letterData.email}</li>` : ''}
+            </ul>
+            
+            ${letterData.reason ? `<p>Reason for cancellation: ${letterData.reason}</p>` : ''}
+            
+            <p>Please send written confirmation that my account has been cancelled and that no future charges will be applied. If additional information is required, you may reach me at ${letterData.email || 'my preferred contact method'}.</p>
+            
+            <p>Thank you,<br>${letterData.fullName}</p>
+        </div>
+    `;
+}
+
+function buildLetterText(letterData, service) {
+    const today = new Date();
+    const formattedDate = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const addressBlock = [letterData.fullName, letterData.addressLine1, letterData.cityStateZip].filter(Boolean).join('\n');
+    
+    return `
+${formattedDate}
+
+${addressBlock}
+
+${letterData.serviceName} Cancellation Department
+${service?.contact?.email || `support@${(service?.id || 'service').replace(/[^a-z0-9]/gi, '')}.com`}
+
+RE: Cancellation Request for ${letterData.serviceName}
+
+To whom it may concern,
+
+I am writing to officially cancel my ${letterData.serviceName} subscription effective immediately. Please confirm that my account will not be billed moving forward.
+
+Account details:
+${letterData.accountNumber ? `- Account Number: ${letterData.accountNumber}\n` : ''}${letterData.membershipId ? `- Membership ID: ${letterData.membershipId}\n` : ''}${letterData.email ? `- Email on file: ${letterData.email}\n` : ''}
+${letterData.reason ? `Reason for cancellation: ${letterData.reason}\n` : ''}
+Please send written confirmation that my account has been cancelled and that no future charges will be applied. If additional information is required, you may reach me at ${letterData.email || 'my preferred contact method'}.
+
+Thank you,
+${letterData.fullName}
+    `.trim();
+}
+
+async function copyLetterToClipboard() {
+    if (!lastGeneratedLetter) {
+        alert('Generate your letter first.');
+        return;
+    }
+    const content = lastGeneratedLetter.previewText || buildLetterText(lastGeneratedLetter);
+    try {
+        await navigator.clipboard.writeText(content);
+        alert('Letter copied to clipboard');
+    } catch (error) {
+        console.error('Clipboard error', error);
+        alert('Unable to copy letter. Please select and copy manually.');
+    }
+}
+
+async function downloadLetterAsPdf() {
+    if (!lastGeneratedLetter) {
+        alert('Generate your letter first.');
+        return;
+    }
+    
+    if (typeof html2pdf === 'undefined') {
+        window.print();
+        return;
+    }
+    
+    const element = document.getElementById('letterPreview');
+    await html2pdf().set({
+        margin: 0.5,
+        filename: `${lastGeneratedLetter.serviceName}_cancellation_letter.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+    }).from(element).save();
+}
+
+async function sendLetterToEmail(letterData, notifyUser = false) {
+    if (!letterData) {
+        if (notifyUser) alert('Generate your letter first.');
+        return;
+    }
+    if (!letterData.email) {
+        if (notifyUser) alert('Please include your email address in the form.');
+        return;
+    }
+    
+    const payload = {
+        email: letterData.email,
+        subject: `Cancellation Letter - ${letterData.serviceName}`,
+        html: letterData.previewHtml || buildLetterTemplate(letterData),
+        text: letterData.previewText || buildLetterText(letterData),
+        serviceName: letterData.serviceName
+    };
+    
+    try {
+        const response = await fetch('/api/send-letter', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to email letter');
+        }
+        
+        if (notifyUser) {
+            alert('Letter emailed to you successfully!');
+        }
+    } catch (error) {
+        console.error('Send letter error', error);
+        if (notifyUser) {
+            alert('Unable to send email right now. Please try again later or contact support.');
+        }
+    }
+}
+
+if (typeof window !== 'undefined') {
+    window.StopTheCharge = window.StopTheCharge || {};
+    Object.assign(window.StopTheCharge, {
+        setProStatus,
+        isProUser,
+        markLetterUnlocked,
+        sendLetterToEmail,
+        getPendingLetter,
+        clearPendingLetter,
+        initializeCancellationLetterPage,
+        PLAN_TYPES
+    });
 }
 
 // Save to localStorage
@@ -2202,39 +2914,50 @@ function closeUpgradeModal() {
     if (modal) modal.remove();
 }
 
-async function checkout(plan) {
-    // Fetch price IDs from backend (which reads from env vars)
-    const priceIds = {
-        monthly: 'STRIPE_PRICE_MONTHLY',
-        yearly: 'STRIPE_PRICE_YEARLY'
+async function startCheckout(planKey, options = {}) {
+    const planConfig = {
+        monthly: {
+            priceId: 'STRIPE_PRICE_MONTHLY',
+            mode: 'subscription',
+            planType: PLAN_TYPES.MONTHLY
+        },
+        yearly: {
+            priceId: 'STRIPE_PRICE_YEARLY',
+            mode: 'subscription',
+            planType: PLAN_TYPES.YEARLY
+        },
+        cancellation_letter: {
+            priceId: 'STRIPE_PRICE_CANCEL_LETTER',
+            mode: 'payment',
+            planType: PLAN_TYPES.LETTER
+        }
     };
     
-    console.log('[Stripe] Starting checkout for plan:', plan);
-    console.log('[Stripe] Using price ID key:', priceIds[plan]);
+    const selectedPlan = planConfig[planKey];
+    if (!selectedPlan) {
+        throw new Error(`Unknown plan: ${planKey}`);
+    }
+    
+    const requestBody = {
+        priceId: selectedPlan.priceId,
+        mode: selectedPlan.mode,
+        planType: selectedPlan.planType,
+        email: options.email || localStorage.getItem('userEmail') || '',
+        metadata: options.metadata || {}
+    };
+    
+    if (options.letterData) {
+        savePendingLetter(options.letterData);
+        requestBody.metadata.letterId = options.letterData.letterId;
+        requestBody.metadata.serviceName = options.letterData.serviceName;
+    }
     
     try {
-        const requestBody = { 
-            priceId: priceIds[plan],
-            email: localStorage.getItem('userEmail') || ''
-        };
-        console.log('[Stripe] Request body:', requestBody);
-        console.log('[Stripe] Fetching:', window.location.origin + '/api/create-checkout');
-        
         const response = await fetch('/api/create-checkout', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
         });
-        
-        console.log('[Stripe] Response status:', response.status);
-        console.log('[Stripe] Response headers:', Object.fromEntries(response.headers.entries()));
-        
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('text/html')) {
-            const htmlText = await response.text();
-            console.error('[Stripe] Received HTML instead of JSON:', htmlText.substring(0, 500));
-            throw new Error('API endpoint not found (404). The serverless function may not be deployed correctly.');
-        }
         
         if (!response.ok) {
             const errorText = await response.text();
@@ -2249,10 +2972,7 @@ async function checkout(plan) {
         }
         
         const data = await response.json();
-        console.log('[Stripe] Success response:', data);
-        
         if (data.url) {
-            console.log('[Stripe] Redirecting to:', data.url);
             window.location.href = data.url;
         } else {
             throw new Error('No checkout URL received from server');
@@ -2261,6 +2981,10 @@ async function checkout(plan) {
         console.error('[Stripe] Checkout error:', error);
         alert(`Unable to process payment.\n\nError: ${error.message}\n\nPlease email hello@stopthecharge.com for assistance.`);
     }
+}
+
+async function checkout(plan) {
+    return startCheckout(plan, { metadata: { source: 'upgrade_modal' } });
 }
 
 // Show cancellation letter modal
@@ -2295,35 +3019,21 @@ function showCancellationLetterModal() {
 }
 
 // Checkout for cancellation letter (one-time payment)
-async function checkoutCancellationLetter() {
-    const priceId = 'STRIPE_PRICE_CANCEL_LETTER';
+async function checkoutCancellationLetter(letterData = null) {
+    const payload = letterData ? {
+        letterData: {
+            ...letterData,
+            letterId: letterData.letterId || `letter_${Date.now()}`
+        },
+        metadata: {
+            flow: 'cancellation_letter_generator'
+        },
+        email: letterData.email
+    } : {
+        metadata: { flow: 'dashboard_modal' }
+    };
     
-    try {
-        const response = await fetch('/api/create-checkout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                priceId: priceId,
-                mode: 'payment', // one-time payment instead of subscription
-                email: localStorage.getItem('userEmail') || ''
-            })
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Payment failed');
-        }
-        
-        const { url } = await response.json();
-        if (url) {
-            window.location.href = url;
-        } else {
-            throw new Error('No checkout URL received');
-        }
-    } catch (error) {
-        console.error('Cancellation letter checkout error:', error);
-        alert(`Unable to process payment at this time. Please try again or email hello@stopthecharge.com for assistance.\n\nError: ${error.message}`);
-    }
+    await startCheckout('cancellation_letter', payload);
 }
 /* Cache bust: 1763010662 */
 

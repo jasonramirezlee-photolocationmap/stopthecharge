@@ -5,5 +5,11 @@
     "api/*.js": {
       "runtime": "nodejs20.x"
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/service/:slug.html",
+      "destination": "/service-detail.html"
+    }
+  ]
 }
